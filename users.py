@@ -17,6 +17,7 @@ class User:
         self.__balance = balance
         self.__dolar_balance = 0.0
         self.__history = []
+        self.__investments_goals = []
 
 
     # ---------- Getters ----------
@@ -45,8 +46,27 @@ class User:
     def set_password(self, new_password: str):
         self.__password = new_password
 
-    def set_balance(self, new_balance: float):
+    def set_balance(self, new_balance: float, withdraw: bool = False):
         self.__balance = new_balance
+
+        if withdraw:
+            if self.__balance < 0:
+                raise ValueError("Insufficient funds for withdrawal.")
+            history =History_transaction(
+                action="Withdrawal",
+                description=f"Withdrew {self.__balance} from account",
+                amount=self.__balance,
+                balance=self.__balance
+            )
+
+        else:
+            history = History_transaction(
+                action="Deposit",
+                description=f"Deposited {self.__balance} into account",
+                amount=self.__balance,
+                balance=self.__balance
+            )
+        self.add_history(history)
 
     def set_dolar_balance(self, new_dolar_balance: float):
         self.__dolar_balance = new_dolar_balance
@@ -66,7 +86,7 @@ class User:
 
 
 class Investor(User):
-    def __init__(self, name: str, password: str, balance: float, investment_portfolio: list):
+    def __init__(self, name: str, password: str, balance: float):
         super().__init__(name, password, balance)
         self.__investments_goals = []
 

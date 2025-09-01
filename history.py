@@ -63,15 +63,13 @@ class History_bill(History):
 class History_investment(History):
     """This class is for the investments in the history table"""
 
-    def __init__(self, action: str, description: str, investment_amount: float, type: str):
+    def __init__(self, action: str, description: str, investment_amount: float):
         super().__init__(action, description)
         self.__investment_amount = investment_amount
-        self.__type = type
 
     def show(self):
         super().show()
         print("Investment Amount: ", self.__investment_amount)
-        print("Type: ", self.__type)
 
 
 class History_cheque_book(History):

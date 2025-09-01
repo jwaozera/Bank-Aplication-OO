@@ -14,11 +14,12 @@ from users import *
 from history import *
 
 class Bill:
-    def __init__(self, value: float, due_date: str):
+    def __init__(self, value: float, description: str, due_date: str):
         """
         due_date needs to be in the format 'YYYY-MM-DD'
         """
         self.__value = value
+        self.__description = description
         self.__due_date = datetime.strptime(due_date, "%Y-%m-%d")
         self.__paid = False
 
@@ -31,6 +32,9 @@ class Bill:
 
     def is_paid(self) -> bool:
         return self.__paid
+    
+    def get_description(self) -> str:
+        return self.__description
 
     # ---------- Setters ----------
     def set_value(self, new_value: float):
