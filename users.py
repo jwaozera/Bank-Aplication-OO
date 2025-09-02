@@ -10,14 +10,18 @@ The normal is the superclass of investor (to make polymorphism easier).
 """
 
 from history import *
+
+
 class User:
     def __init__(self, name: str, password: str, balance: float):
         self.__name = name
         self.__password = password
         self.__balance = balance
         self.__dolar_balance = 0.0
+        self.__loans = []
         self.__history = []
         self.__investments_goals = []
+        self.__checkbook = 0
 
 
     # ---------- Getters ----------
@@ -32,6 +36,9 @@ class User:
 
     def get_dolar_balance(self) -> float:
         return self.__dolar_balance
+
+    def get_loans(self) -> list:
+        return self.__loans
 
     def get_history(self) -> list:
         return self.__history
@@ -83,7 +90,27 @@ class User:
     def add_goal(self, goal: str):
         self.__investments_goals.append(goal)
 
+    def add_loan(self, loan):
+        self.__loans.append(loan)
 
+    def add_investment_goal(self, investment_goal):
+        self.__investments_goals.append(investment_goal)
+
+
+    def new_checkbook(self):
+        if self.__checkbook == 0:
+            self.__checkbook = 1
+            print("✅ New checkbook.")
+        else:
+            print("❌ You already had a checkbook this month.")
+            print("Do you wish to pay R$ 25 for a new one?")
+            choice = input("Y/N")
+
+            if choice == "y" or choice == "yes" or choice == "sim":
+                self.set_balance(self.get_balance() - 25.00, True)
+                print("New checkbook ordered")
+            else:
+                print("Canceled transaction")
 
 class Investor(User):
     def __init__(self, name: str, password: str, balance: float):

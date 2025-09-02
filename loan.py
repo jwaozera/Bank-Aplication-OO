@@ -5,6 +5,7 @@ Here we are with the loan module
 """
 from users import *
 from history import *
+from bill import *
 
 class Loan:
     def __init__(self, amount: float, duration: int, user: User):
@@ -20,6 +21,8 @@ class Loan:
         )
         user.add_history(history_entry)
 
+        user.add_loan(self)
+
     # ---------- Getters ----------
     def get_amount(self) -> float:
         return self.__amount
@@ -27,8 +30,6 @@ class Loan:
     def get_duration(self) -> int:
         return self.__duration
 
-    def get_interest_rate(self) -> float:
-        return self.__interest_rate
 
     # ---------- Setters ----------
     def set_amount(self, new_amount: float):
@@ -36,6 +37,3 @@ class Loan:
 
     def set_duration(self, new_duration: int):
         self.__duration = new_duration
-
-    def set_interest_rate(self, new_interest_rate: float):
-        self.__interest_rate = new_interest_rate
