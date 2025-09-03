@@ -152,22 +152,6 @@ python main.py
 3. Navigate to extracted folder in terminal
 4. Run: `python main.py`
 
-### Troubleshooting
-
-#### Common Issues and Solutions
-
-**"python is not recognized as an internal or external command"**
-- Solution: Install Python from [python.org](https://python.org) or use `python3` command
-
-**"No module named 'users'"**
-- Solution: Ensure all Python files are in the same directory and you're running from that directory
-
-**Permission denied errors**
-- Solution: Make sure you have read/write permissions in the directory
-
-**Import errors**
-- Solution: Check that all files are present and properly named (case-sensitive on some systems)
-
 ## Default Accounts
 
 The system comes with pre-configured test accounts:
@@ -211,11 +195,3 @@ The system comes with pre-configured test accounts:
 ### Investment Goals (Investor Accounts)
 - Create multiple financial targets
 - View all active goals and their status
-
-## Technical Features
-
-### Object-Oriented Design
-- Inheritance: `Investor` extends `User`
-- Abstraction: Abstract `History` class with concrete implementations
-- Encapsulation: Private attributes with getter/setter methods
-- Polymorphism: Different history types with unified interface
