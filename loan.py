@@ -13,7 +13,7 @@ class Loan:
         self.__duration = duration
         self.__user = user
 
-        # Cria histórico e adiciona ao usuário
+        #cria histórico e adiciona ao usuário
         history_entry = History_loan(
             action="Loan",
             description=f"{user.get_name()} took a loan of {self.__amount} for {self.__duration} months.",

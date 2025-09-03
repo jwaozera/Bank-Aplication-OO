@@ -75,10 +75,8 @@ class History_investment(History):
 class History_cheque_book(History):
     """This class is for the cheque book transactions in the history table"""
 
-    def __init__(self, action: str, description: str, cheque_number: str):
+    def __init__(self, action: str, description: str):
         super().__init__(action, description)
-        self.__cheque_number = cheque_number
 
     def show(self):
         super().show()
-        print("Cheque Number: ", self.__cheque_number)

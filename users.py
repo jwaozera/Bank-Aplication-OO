@@ -20,7 +20,6 @@ class User:
         self.__dolar_balance = 0.0
         self.__loans = []
         self.__history = []
-        self.__investments_goals = []
         self.__checkbook = 0
 
 
@@ -43,9 +42,6 @@ class User:
     def get_history(self) -> list:
         return self.__history
 
-    def get_investments_goals(self) -> list:
-        return self.__investments_goals
-
     # ---------- Setters ----------
     def set_name(self, new_name: str):
         self.__name = new_name
@@ -53,33 +49,32 @@ class User:
     def set_password(self, new_password: str):
         self.__password = new_password
 
-    def set_balance(self, new_balance: float, withdraw: bool = False):
+    def set_balance(self, new_balance: float):
+        """Apenas atualiza o saldo (sem registrar histórico)."""
         self.__balance = new_balance
 
-        if withdraw:
-            if self.__balance < 0:
-                raise ValueError("Insufficient funds for withdrawal.")
-            history =History_transaction(
-                action="Withdrawal",
-                description=f"Withdrew {self.__balance} from account",
-                amount=self.__balance,
-                balance=self.__balance
-            )
 
-        else:
-            history = History_transaction(
-                action="Deposit",
-                description=f"Deposited {self.__balance} into account",
-                amount=self.__balance,
-                balance=self.__balance
-            )
-        self.add_history(history)
+    def deposit(self, amount: float):
+        """Faz um depósito e registra no histórico."""
+        if amount <= 0:
+            raise ValueError("Deposit amount must be positive.")
+
+        self.__balance += amount
+        
+
+
+    def withdraw(self, amount: float):
+        """Faz um saque e registra no histórico."""
+        if amount <= 0:
+            raise ValueError("Withdrawal amount must be positive.")
+
+        if self.__balance < amount:
+            raise ValueError("Insufficient funds for withdrawal.")
+
+        self.__balance -= amount
 
     def set_dolar_balance(self, new_dolar_balance: float):
         self.__dolar_balance = new_dolar_balance
-
-    def set_investments_goals(self, new_goals: list):
-        self.__investments_goals = new_goals
 
     # ---------- Outros métodos ----------
     def add_history(self, new_history: History):
@@ -87,14 +82,9 @@ class User:
             raise TypeError("new_history must be an instance of History or its subclasses.")
         self.__history.append(new_history)
 
-    def add_goal(self, goal: str):
-        self.__investments_goals.append(goal)
-
     def add_loan(self, loan):
         self.__loans.append(loan)
 
-    def add_investment_goal(self, investment_goal):
-        self.__investments_goals.append(investment_goal)
 
 
     def new_checkbook(self):
@@ -107,10 +97,12 @@ class User:
             choice = input("Y/N")
 
             if choice == "y" or choice == "yes" or choice == "sim":
-                self.set_balance(self.get_balance() - 25.00, True)
+                self.set_balance(self.get_balance() - 25.00)
                 print("New checkbook ordered")
             else:
                 print("Canceled transaction")
+
+        self.add_history(History_cheque_book("New Checkbook", "Ordered a new checkbook."))
 
 class Investor(User):
     def __init__(self, name: str, password: str, balance: float):
@@ -129,33 +121,30 @@ class Investor(User):
         self.__investments_goals.append(investment)
 
 
-def transaction(user1: User, user2: User, amount: float): #user 1 paga e o user 2 recebe, só pode ser feita pelo pagante
-
+def transaction(user1, user2, amount: float):
     if amount <= 0:
-        raise ValueError("Transaction amount must be positive.")
+        raise ValueError("Transfer amount must be positive.")
 
     if user1.get_balance() < amount:
-        raise ValueError(f"{user1.get_name()} does not have enough balance to make the transaction.")
+        raise ValueError("Insufficient funds for transfer.")
 
-    #atualiza os saldos
-    user1.set_balance(user1.get_balance() - amount)
-    user2.set_balance(user2.get_balance() + amount)
+    #saída do remetente
+    user1.withdraw(amount)
 
-    #cria os históricos da transação
-    history1 = History_transaction(
-        action="Debit",
+    #entrada no destinatário
+    user2.deposit(amount)
+
+    # Histórico extra descritivo
+    user1.add_history(History_transaction(
+        action="Transfer Sent",
         description=f"Transferred {amount} to {user2.get_name()}",
-        amount=amount,
+        amount=-amount,
         balance=user1.get_balance()
-    )
+    ))
 
-    history2 = History_transaction(
-        action="Credit",
+    user2.add_history(History_transaction(
+        action="Transfer Received",
         description=f"Received {amount} from {user1.get_name()}",
         amount=amount,
         balance=user2.get_balance()
-    )
-
-    #adiciona os históricos
-    user1.add_history(history1)
-    user2.add_history(history2)
+    ))

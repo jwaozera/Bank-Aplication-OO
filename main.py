@@ -7,7 +7,7 @@ from loan import *
 from users import *
 
 
-def ask_int(prompt):
+def ask(prompt):
     print(prompt)
     choice = input("Select the number: ")
     return choice
@@ -142,12 +142,12 @@ def loop_menu(logged_account, accounts, bills_list):
         print("\n=========== Menu de Operações ===========\n")
         # Exibe notificações de boletos vencidos
         for boleto in bills_list:
-            if boleto.is_overdue():
-                print(f"⚠️ Boleto vencido: {boleto.get_description()} - Valor: R$ {boleto.get_amount():.2f}")
+            if isinstance(boleto, Bill) and boleto.is_overdue():
+                print(f"⚠️ Overdue Bill: {boleto.get_description()} - Valor: R$ {boleto.get_value():.2f}")
 
         print("=" * 50)
 
-        choice = ask_int("\n1. Balance\n2. Withdraw\n3. Deposit\n4. View History\n5. Transfer\n6. Change Account\n7. Pay Bill\n8. Exchange Real -> Dollar \n9. Exchange Dollar -> Real\n10. Loan\n11. Checkbook\n12. Create Investment Goal\n13. Deposit in Goal\n14. Customer Service\n15. Exit\n")
+        choice = ask("\n1. Balance\n2. Withdraw\n3. Deposit\n4. View History\n5. Transfer\n6. Change Account\n7. Pay Bill\n8. Exchange Real -> Dollar \n9. Exchange Dollar -> Real\n10. Loan\n11. Checkbook\n12. Create Investment Goal\n13. Deposit in Goal\n14. Customer Service\n15. Exit\n")
 
         #first option is show balance
         if choice == '1':
@@ -155,17 +155,33 @@ def loop_menu(logged_account, accounts, bills_list):
             print(f"Your dollar balance is: $ {logged_account.get_dolar_balance():.2f}")
 
         #second option is withdraw
-        if choice == '2':
+        elif choice == '2':
             amount = float(input("Enter the amount to withdraw: "))
-            logged_account.set_balance(logged_account.get_balance() - amount, withdraw=True)
+            logged_account.withdraw(amount)
+
+            history = History_transaction(
+            action="Withdrawal",
+            description=f"Withdrew {amount} from account",
+            amount=amount,
+            balance=logged_account.get_balance()
+            )
+            logged_account.add_history(history)
 
         #third option is deposit
-        if choice == '3':
+        elif choice == '3':
             amount = float(input("Enter the amount to deposit: "))
-            logged_account.set_balance(logged_account.get_balance() + amount)
+            logged_account.deposit(amount)
+
+            history = History_transaction(
+            action="Deposit",
+            description=f"Deposited {amount} into account",
+            amount=amount,
+            balance=logged_account.get_balance()
+            )
+            logged_account.add_history(history)
 
         #fourth option is view history
-        if choice == '4':
+        elif choice == '4':
             #fourth option is view history
             print("\n========== History ==========\n")
             historico = logged_account.get_history()
@@ -178,19 +194,19 @@ def loop_menu(logged_account, accounts, bills_list):
                 
                 for i, history in enumerate(historico, 1):
                     print(f"\n🔹 Transaction {i}:")
-                    history.show()  # Chama o método show() específico de cada tipo
+                    history.show()  #chama o método show() específico de cada tipo
                     print("-" * 30)
             
             print("\n" + "=" * 45)
-            input("Press Enter to continue...")  # Pausa para o usuário ler
+            input("Press Enter to continue...")  #pausa para o usuário ler
 
         #fifth option is transfer
-        if choice == '5':
+        elif choice == '5':
             print("\n========== Transfer ==========\n")
 
-            # Exibe a lista de contas para transferência
+            #exibe a lista de contas para transferência
             for i, account in enumerate(accounts, 1):
-                if account != logged_account:  # Não exibe a conta logada
+                if account != logged_account:  #não exibe a conta logada
                     print(f"{i}. {account.get_name()}")
 
             choice = int(input("Select the account to transfer to (number): "))
@@ -202,12 +218,12 @@ def loop_menu(logged_account, accounts, bills_list):
                 print("Invalid account selection.")
 
         #sixty option is change account
-        if choice == '6':
+        elif choice == '6':
             print("\n========== Change Account ==========\n")
             print(f"Currently logged in as: {logged_account.get_name()}")
             print("\nAvailable accounts:")
             
-            # Cria uma lista das outras contas (excluindo a atual)
+            #cria uma lista das outras contas (excluindo a atual)
             other_accounts = [account for account in accounts if account != logged_account]
             
             if not other_accounts:
@@ -215,7 +231,7 @@ def loop_menu(logged_account, accounts, bills_list):
                 input("Press Enter to continue...")
                 continue
             
-            # Exibe a lista de contas para troca
+            #exibe a lista de contas para troca
             for i, account in enumerate(other_accounts, 1):
                 account_type = "Investor" if isinstance(account, Investor) else "Regular User"
                 print(f"{i}. {account.get_name()} ({account_type})")
@@ -247,15 +263,15 @@ def loop_menu(logged_account, accounts, bills_list):
             input("Press Enter to continue...")
 
         #seventh option is pay bills
-        if choice == '7':
+        elif choice == '7':
             print("\n========== Pay Bills ==========\n")
     
-            # Verifica se existem boletos na lista
+            #verifica se existem boletos na lista
             if not bills_list:
                 print("No bills available to pay.")
                 input("Press Enter to continue...")
             else:
-                # Filtra apenas boletos não pagos
+                #filtra apenas boletos não pagos
                 unpaid_bills = [bill for bill in bills_list if not bill.is_paid()]
                 
                 if not unpaid_bills:
@@ -265,7 +281,7 @@ def loop_menu(logged_account, accounts, bills_list):
                     print(f"Found {len(unpaid_bills)} unpaid bill(s):")
                     print("-" * 50)
                     
-                    # Exibe os boletos não pagos com informações detalhadas
+                    #exibe os boletos não pagos com informações detalhadas
                     for i, bill in enumerate(unpaid_bills, 1):
                         status = "⚠️ OVERDUE" if bill.is_overdue() else "Pending"
                         print(f"{i}. {bill.get_description()}")
@@ -284,7 +300,7 @@ def loop_menu(logged_account, accounts, bills_list):
                         elif 1 <= choice <= len(unpaid_bills):
                             selected_bill = unpaid_bills[choice - 1]
                             
-                            # Confirmação antes do pagamento
+                            #confirmação antes do pagamento
                             print(f"\n📋 Bill Details:")
                             print(f"Description: {selected_bill.get_description()}")
                             print(f"Value: R$ {selected_bill.get_value():.2f}")
@@ -297,7 +313,7 @@ def loop_menu(logged_account, accounts, bills_list):
                             
                             if confirm in ['y', 'yes', 's', 'sim']:
                                 try:
-                                    # Tenta pagar o boleto usando o método da classe Bill
+                                    #tenta pagar o boleto usando o método da classe Bill
                                     selected_bill.pay(logged_account)
                                     print(f"✅ Bill paid successfully!")
                                     print(f"💰 New balance: R$ {logged_account.get_balance():.2f}")
@@ -329,7 +345,7 @@ def loop_menu(logged_account, accounts, bills_list):
                 print(f"✅ Successfully exchanged R$ {amount:.2f} to $ {dollars:.2f}")
                 print(f"💰 New balance: R$ {logged_account.get_balance():.2f}, $ {logged_account.get_dolar_balance():.2f}")
 
-        # ninth option is to exchange dollar to real
+        #ninth option is to exchange dollar to real
         elif choice == '9':
             print("\n💱 Exchange Dollar to Real")
             amount = float(input("Enter amount in $: "))
@@ -357,7 +373,7 @@ def loop_menu(logged_account, accounts, bills_list):
                 elif amount > logged_account.get_balance() * 2:
                     print("❌ Loan amount exceeds limit (max 2x your current balance).")
                 else:
-                    # Solicita duração do empréstimo
+                    #solicita duração do empréstimo
                     duration = int(input("Enter loan duration in months (6-60): "))
                     
                     if duration < 6 or duration > 60:
@@ -366,35 +382,23 @@ def loop_menu(logged_account, accounts, bills_list):
                         print(f"\n📋 Loan Summary:")
                         print(f"Loan amount: R$ {amount:.2f}")
                         print(f"Duration: {duration} months")
-                        print(f"Monthly payment: R$ {amount/duration:.2f}")
                         
                         confirm = input("\nConfirm loan? (y/n): ").lower().strip()
                         
                         if confirm in ['y', 'yes', 's', 'sim']:
-                            # Cria o empréstimo
-                            loan = Loan(amount, duration, logged_account)
+                            #cria o empréstimo
+                            Loan(amount, duration, logged_account)
                             
-                            # Cria o boleto para pagamento (usando a data atual + duração)
+                            #cria o boleto para pagamento (usando a data atual + duração)
                             from datetime import datetime, timedelta
                             due_date = datetime.now() + timedelta(days=duration * 30)
                             due_date_str = due_date.strftime("%Y-%m-%d")
                             
                             payment_bill = Bill(amount, f"Loan Payment - {duration} months", due_date_str)
-                            bills_list.append(payment_bill)  # Adiciona à lista de boletos
-
-                            #adiciona o empréstimo à lista de empréstimos do usuário
-                            logged_account.add_loan(loan)
+                            bills_list.append(payment_bill)  #adiciona à lista de boletos
 
                             #adiciona o saldo ao usuário
                             logged_account.set_balance(logged_account.get_balance() + amount)
-
-                            #adiciona o histórico do empréstimo
-                            logged_account.add_history(History_transaction(
-                                action="Loan",
-                                description=f"Loan approved: R$ {amount:.2f}",
-                                amount=amount,
-                                balance=logged_account.get_balance()
-                            ))
     
                             print(f"✅ Loan approved: R$ {amount:.2f}")
                             print(f"💰 New balance: R$ {logged_account.get_balance():.2f}")
@@ -425,7 +429,7 @@ def loop_menu(logged_account, accounts, bills_list):
                 print(f"💰 Current balance: R$ {logged_account.get_balance():.2f}")
                 
                 try:
-                    # Solicita informações da meta de investimento
+                    #solicita informações da meta de investimento
                     description = input("Enter your investment goal description: ")
                     
                     if not description.strip():
@@ -440,7 +444,7 @@ def loop_menu(logged_account, accounts, bills_list):
                         input("Press Enter to continue...")
                         continue
                     
-                    # Confirmação dos dados
+                    #confirmação dos dados
                     print(f"\n📋 Investment Goal Summary:")
                     print(f"Description: {description}")
                     print(f"Target Amount: R$ {value_needed:.2f}")
@@ -448,14 +452,14 @@ def loop_menu(logged_account, accounts, bills_list):
                     confirm = input("\nConfirm investment goal creation? (y/n): ").lower().strip()
                     
                     if confirm in ['y', 'yes', 's', 'sim']:
-                        # Cria a meta de investimento usando a classe Goal
+                        #cria a meta de investimento usando a classe Goal
                         from goal import Goal
                         new_goal = Goal(value_needed, description, logged_account)
                         
                         print(f"✅ Investment goal created successfully!")
                         print(f"🎯 Goal: {description}")
                         print(f"💰 Target: R$ {value_needed:.2f}")
-                        print(f"📊 You now have {len(logged_account.get_investments_goals())} active investment goal(s)")
+                        print(f"📊 You now have {len(logged_account.get_investment_goals())} active investment goal(s)")
                         
                     else:
                         print("❌ Investment goal creation cancelled.")
@@ -469,7 +473,7 @@ def loop_menu(logged_account, accounts, bills_list):
         elif choice == '13':
             print("\n💰 Deposit in Investment Goal")
             
-            goals = logged_account.get_investments_goals()
+            goals = logged_account.get_investment_goals()
             
             if not goals:
                 print("❌ No investment goals found. Create a goal first (option 12).")
@@ -479,10 +483,10 @@ def loop_menu(logged_account, accounts, bills_list):
                 print("\n📋 Your Investment Goals:")
                 print("-" * 50)
                 
-                # Exibe as metas disponíveis
+                #exibe as metas disponíveis
                 for i, goal in enumerate(goals, 1):
-                    print(f"{i}. {goal._Goal__description}")
-                    print(f"   🎯 Target: R$ {goal._Goal__value_needed:.2f}")
+                    print(f"{i}. {goal.get_description()}")
+                    print(f"   🎯 Target: R$ {goal.get_value_needed():.2f}")
                     print("-" * 30)
                 
                 try:
@@ -493,8 +497,8 @@ def loop_menu(logged_account, accounts, bills_list):
                     elif 1 <= choice <= len(goals):
                         selected_goal = goals[choice - 1]
                         
-                        print(f"\n📋 Selected Goal: {selected_goal._Goal__description}")
-                        print(f"🎯 Target Amount: R$ {selected_goal._Goal__value_needed:.2f}")
+                        print(f"\n📋 Selected Goal: {selected_goal.get_description()}")
+                        print(f"🎯 Target Amount: R$ {selected_goal.get_value_needed():.2f}")
                         print(f"💰 Your balance: R$ {logged_account.get_balance():.2f}")
                         
                         deposit_amount = float(input("\nEnter amount to deposit in goal (R$): "))
@@ -504,16 +508,16 @@ def loop_menu(logged_account, accounts, bills_list):
                         elif deposit_amount > logged_account.get_balance():
                             print("❌ Insufficient balance for this deposit.")
                         else:
-                            confirm = input(f"\nConfirm deposit of R$ {deposit_amount:.2f} into '{selected_goal._Goal__description}'? (y/n): ").lower().strip()
+                            confirm = input(f"\nConfirm deposit of R$ {deposit_amount:.2f} into '{selected_goal.get_description()}'? (y/n): ").lower().strip()
                             
                             if confirm in ['y', 'yes', 's', 'sim']:
-                                # Usa o método add_value da classe Goal
+                                #usa o método add_value da classe Goal
                                 selected_goal.add_value(logged_account, deposit_amount)
                                 print(f"✅ Successfully deposited R$ {deposit_amount:.2f} into your investment goal!")
                                 print(f"💰 New balance: R$ {logged_account.get_balance():.2f}")
                                 
-                                # Verifica se a meta foi atingida
-                                if selected_goal._Goal__value_needed <= 0:
+                                #verifica se a meta foi atingida
+                                if selected_goal.get_value_needed() <= 0:
                                     print("🎉 Congratulations! You've reached your investment goal!")
                             else:
                                 print("❌ Deposit cancelled.")
@@ -531,10 +535,11 @@ def loop_menu(logged_account, accounts, bills_list):
 
         #exit
         else:
+            print("Exiting...")
             break
 
 def main():
-    accounts = [] # lista para armazenar as contas criadas e fazer as validações necessárias
+    accounts = [] #lista para armazenar as contas criadas e fazer as validações necessárias
 
     #inicializando contas de exemplo para o banco
     #parâmetros (Nome do usuário, Senha, Saldo inicial, Talões de Cheque)
@@ -547,8 +552,8 @@ def main():
     #inicializando boletos de exemplo
     bills_list = [] # lista para armazenar os boletos criados
     #parâmetros (Titular, Valor, Nome do boleto, Vencimento)
-    bills_list.append(Bill(100, "Instalação da fonte", "2023-10-31"))
-    bills_list.append(Bill(200, "Corrimão da escada", "2023-11-15"))
+    bills_list.append(Bill(100, "Font installation", "2023-10-31"))
+    bills_list.append(Bill(200, "Stair railing", "2023-11-15"))
 
 
      #começo do menu no terminal, pede o usuário e a senha
@@ -560,11 +565,11 @@ def main():
     #loop para login (bem simples, possívelmente alterar depois)
     for account in accounts:
         if account.get_name() == nome and account.get_password() == senha:
-            account_logged = account # armazena a conta atual(conta logada)
+            account_logged = account #armazena a conta atual(conta logada)
             print(f"Welcome, {account_logged.get_name()}!")
             break
     else:
-        # se não encontrar a conta, cria uma nova
+        #se não encontrar a conta, cria uma nova
         print("Conta não encontrada. Criando uma nova conta...")
         account_nova = User(nome, senha, 0)
         accounts.append(account_nova)
