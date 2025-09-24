@@ -1,4 +1,32 @@
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)
+
+
 # Bank-Aplication-OO
+
+
+## 🔄 Principais Destaques da Refatoração:
+
+
+1. Design Patterns Implementados
+
+Singleton Pattern: Para gerenciar uma única instância do sistema bancário
+Factory Method Pattern: Para criação de diferentes tipos de usuários
+Abstract Factory Pattern: Para criar famílias de objetos de histórico de transações
+
+2. Arquitetura Modular
+
+Antes: Um arquivo main.py com muitas linhas
+Depois: Estrutura modular com separação clara de responsabilidades
+
+3. Melhorias Significativas
+
+Interface de usuário aprimorada visual + formatação
+Sistema completo de atendimento ao cliente
+Tratamento robusto de erros
+Gerenciamento avançado de contas
+
 
 ## Objetos para se utilizar
  - Cliente - Tudo que tem relação com o usuário, desde saldo e nome até histórico
@@ -8,9 +36,103 @@
  - Empréstimo - Para manipular cada valor, juros e prazos de um empréstimo
  - Investimento - Manipular e atribuir os investimentos de cada usuário
 
-# North Frontier Bank System
 
-A comprehensive banking system simulation built in Python featuring user account management, transactions, loans, bills, and investment goals.
+# North Frontier Bank System - Refactored Edition
+
+A comprehensive banking system simulation built in Python featuring advanced **Object-Oriented Design Patterns**, complete user account management, transactions, loans, bills, and investment goals.
+
+## 🔄 Major Refactoring & Design Pattern Implementation
+
+This version represents a **complete architectural overhaul** of the original banking system, implementing industry-standard **Creational Design Patterns** for better maintainability, scalability, and code organization.
+
+### 🏗️ Design Patterns Implemented
+
+#### 1. **Singleton Pattern**
+- **Location**: `core/bank_singleton.py`
+- **Purpose**: Ensures only one instance of the banking system exists throughout the application
+- **Benefits**: 
+  - Centralized state management
+  - Prevents data inconsistencies
+  - Global access point for system-wide data
+  
+```python
+# Before: Multiple scattered lists and variables
+accounts = []
+bills_list = []
+exchange_rate = 5.25
+
+# After: Centralized Singleton management
+bank_system = BankSystem()  # Always returns the same instance
+```
+
+#### 2. **Factory Method Pattern**
+- **Location**: `core/user_factory.py`
+- **Purpose**: Creates different types of users (Regular/Investor) without exposing instantiation logic
+- **Benefits**:
+  - Simplified object creation
+  - Easy to extend with new user types
+  - Separation of concerns
+
+```python
+# Before: Direct instantiation with conditional logic
+if user_type == "investor":
+    user = Investor(name, password, balance)
+else:
+    user = User(name, password, balance)
+
+# After: Factory pattern
+factory = UserFactoryProvider.get_factory("investor")
+user = factory.create_user(name, password, balance)
+```
+
+#### 3. **Abstract Factory Pattern**
+- **Location**: `core/transaction_factory.py`
+- **Purpose**: Creates families of related transaction history objects
+- **Benefits**:
+  - Consistent object creation across user types
+  - Enhanced history tracking for different user categories
+  - Easier maintenance and extension
+
+```python
+# Before: Direct history creation
+history = History_transaction(action, description, amount, balance)
+
+# After: Context-aware factory creation
+factory = TransactionFactoryProvider.get_factory(user)
+history = factory.create_transaction_history(action, description, amount, balance)
+```
+
+### 📁 New Modular Architecture
+
+#### **Before (Monolithic Structure)**:
+```
+bank_application/
+├── main.py (800+ lines of mixed responsibilities)
+├── users.py
+├── bill.py
+├── history.py
+├── loan.py
+└── goal.py
+```
+
+#### **After (Modular Pattern-Based Structure)**:
+```
+north_frontier_bank/
+├── main.py (Clean, focused entry point)
+├── core/                          # 🆕 Core business logic
+│   ├── bank_singleton.py          # Singleton pattern
+│   ├── user_factory.py           # Factory Method pattern
+│   ├── transaction_factory.py    # Abstract Factory pattern
+│   ├── menu_manager.py          # Menu operations manager
+│   └── customer_service.py      # Modularized customer service
+└── models/                       # Enhanced model classes
+    ├── users.py
+    ├── bill.py
+    ├── history.py
+    ├── loan.py
+    └── goal.py
+```
+
 
 ## System Architecture
 
@@ -56,10 +178,7 @@ A comprehensive banking system simulation built in Python featuring user account
 
 ## Requirements
 
-### System Requirements
-- **Operating System**: Windows, macOS, or Linux
 - **Python Version**: Python 3.6 or higher
-- **Memory**: Minimum 128 MB RAM
 - **Storage**: 10 MB free disk space
 
 ### Python Libraries
@@ -101,13 +220,20 @@ If this command runs without errors, you're ready to use the banking system.
 2. Create a new folder called `north_frontier_bank`
 3. Place all files in the same directory:
    ```
-   north_frontier_bank/
-   ├── main.py
-   ├── users.py
-   ├── bill.py
-   ├── loan.py
-   ├── goal.py
-   └── history.py
+  north_frontier_bank/
+   ├── main.py (Clean, focused entry point)
+   ├── core/                          # 🆕 Core business logic
+   │   ├── bank_singleton.py          # Singleton pattern
+   │   ├── user_factory.py           # Factory Method pattern
+   │   ├── transaction_factory.py    # Abstract Factory pattern
+   │   ├── menu_manager.py          # Menu operations manager
+   │   └── customer_service.py      # Modularized customer service
+   └── models/                       # Enhanced model classes
+      ├── users.py
+      ├── bill.py
+      ├── history.py
+      ├── loan.py
+      └── goal.py
    ```
 
 #### Step 2: Verify Python Installation
@@ -141,7 +267,7 @@ python3 main.py
 
 #### Using Git (if project is in a repository)
 ```bash
-git clone [repository-url]
+git clone github.com/jwaozera/Bank-Aplication-OO
 cd north_frontier_bank
 python main.py
 ```
@@ -195,3 +321,5 @@ The system comes with pre-configured test accounts:
 ### Investment Goals (Investor Accounts)
 - Create multiple financial targets
 - View all active goals and their status
+
+
