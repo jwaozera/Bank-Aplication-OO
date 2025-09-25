@@ -17,15 +17,15 @@
 
 2. Arquitetura Modular
 
-Antes: Um arquivo main.py com muitas linhas
-Depois: Estrutura modular com separação clara de responsabilidades
+- Antes: Um arquivo main.py com muitas linhas
+- Depois: Estrutura modular com separação clara de responsabilidades
 
 3. Melhorias Significativas
 
-Interface de usuário aprimorada visual + formatação
-Sistema completo de atendimento ao cliente
-Tratamento robusto de erros
-Gerenciamento avançado de contas
+- Interface de usuário aprimorada visual + formatação
+- Sistema completo de atendimento ao cliente
+- Tratamento robusto de erros
+- Gerenciamento avançado de contas
 
 
 ## Objetos para se utilizar
