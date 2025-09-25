@@ -11,9 +11,9 @@
 
 1. Design Patterns Implementados
 
-Singleton Pattern: Para gerenciar uma única instância do sistema bancário
-Factory Method Pattern: Para criação de diferentes tipos de usuários
-Abstract Factory Pattern: Para criar famílias de objetos de histórico de transações
+- Singleton Pattern: Para gerenciar uma única instância do sistema bancário
+- Factory Method Pattern: Para criação de diferentes tipos de usuários
+- Abstract Factory Pattern: Para criar famílias de objetos de histórico de transações
 
 2. Arquitetura Modular
 
