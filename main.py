@@ -69,7 +69,7 @@ def main():
             menu_manager.exchange_dollar_to_real()
             
         elif choice == '10':
-            menu_manager.process_loan()
+            menu_manager.process_loan_with_strategy()
             
         elif choice == '11':
             menu_manager.order_checkbook()

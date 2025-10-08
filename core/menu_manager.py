@@ -14,6 +14,7 @@ from models.loan import Loan
 from models.goal import Goal
 from datetime import datetime, timedelta
 from core.observers import BalanceObserver, BillNotificationObserver
+from core.loan_strategy import *
 
 class MenuManager:
 
@@ -302,61 +303,77 @@ class MenuManager:
                 print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}, $ {self.logged_account.get_dolar_balance():.2f}")
         except ValueError:
             print("❌ Invalid amount entered.")
-    
-    def process_loan(self):
-        """Processa empréstimo"""
+
+    def process_loan_with_strategy(self):
         print("\n💰 Make a Loan")
         print(f"Current balance: R$ {self.logged_account.get_balance():.2f}")
-        print(f"Maximum loan amount: R$ {self.logged_account.get_balance() * 2:.2f}")
-        
+
+        strategy = LoanStrategyProvider.get_strategy(self.logged_account, "auto")
+        max_loan = strategy.calculate_max_loan(self.logged_account)
+
+        print(f"Maximum loan amount: R$ {max_loan:.2f}")
+
+        # Escolher estratégia (opcional)
+        print("\n Loan Policy Options:")
+        print("1. Auto (Recommended based on your profile)")
+        print("2. Standard Policy")
+        print("3. Conservative Policy (lower risk)")
+
+        policy_choice = input("Select loan policy (1-3, default 1): ").strip()
+
+        strategy_map = {
+            "1": "auto",
+            "2": "standard",
+            "3": "conservative",
+            "": "auto"
+        }
+
+        strategy_type = strategy_map.get(policy_choice, "auto")
+        strategy = LoanStrategyProvider.get_strategy(self.logged_account, strategy_type)
+
+
         try:
-            amount = float(input("Enter loan amount: R$ "))
-            
-            if amount <= 0:
-                print("❌ Loan amount must be positive.")
-                return
-            elif amount > self.logged_account.get_balance() * 2:
-                print("❌ Loan amount exceeds limit (max 2x your current balance).")
-                return
-            
-            duration = int(input("Enter loan duration in months (6-60): "))
-            
-            if duration < 6 or duration > 60:
-                print("❌ Loan duration must be between 6 and 60 months.")
-                return
-            
-            print(f"\n📋 Loan Summary:")
-            print(f"Loan amount: R$ {amount:.2f}")
-            print(f"Duration: {duration} months")
-            
-            confirm = input("\nConfirm loan? (y/n): ").lower().strip()
-            
-            if confirm in ['y', 'yes', 's', 'sim']:
+            amount = float(input("\nEnter loan amount: R$ "))
+            duration = int(input("Enter loan duration in months: "))
+
+            # usa o processador com a estratégia selecionada
+            processor = LoanProcessor(self.logged_account, strategy)
+
+            if processor.process_loan_request(amount, duration):
+                confirm = input("\nConfirm loan? (y/n): ").lower().strip()
+
+                if confirm in ['y', 'yes', 's', 'sim']:
+                    interest_rate = strategy.calculate_interest_rate(amount, duration, self.logged_account)
+                    total_amount = amount * (1 + interest_rate / 100)
+
                 # cria o empréstimo
+                
                 Loan(amount, duration, self.logged_account)
                 
-                # cria boleto para pagamento
+                # cria boleto para pagamento total
                 due_date = datetime.now() + timedelta(days=duration * 30)
-                due_date_str = due_date.strftime("%Y-%m-%d")
-                
-                payment_bill = Bill(amount, f"Loan Payment - {duration} months", due_date_str)
+                payment_bill = Bill(
+                    total_amount, 
+                    f"Loan Payment - {duration} months ({interest_rate:.2f}% interest)", 
+                    due_date.strftime("%Y-%m-%d")
+                )
                 self.bank_system.add_bill(payment_bill)
                 
-                # Adiciona saldo
-                self.logged_account.set_balance(self.logged_account.get_balance() + amount)
+                # add saldo
+                self.logged_account.set_balance(
+                    self.logged_account.get_balance() + amount
+                )
                 
-                print(f"✅ Loan approved: R$ {amount:.2f}")
+                print(f"\n✅ Loan approved and processed!")
                 print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
-                print(f"📅 Payment due: {due_date_str}")
-                print(f"💳 A bill has been created for the amount: R$ {amount:.2f}")
             else:
                 print("❌ Loan cancelled.")
-                
-        except ValueError:
-            print("❌ Invalid input. Please enter valid numbers.")
         
-        input("Press Enter to continue...")
+        except ValueError:
+            print(f"❌ Error:")
     
+    input("\nPress Enter to continue...")
+
     def order_checkbook(self):
         """Processa pedido de talão"""
         self.logged_account.new_checkbook()
