@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Status](https://img.shields.io/badge/Status-Active-success.svg)
+![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)
 
 A comprehensive banking system simulation built with Python, featuring **5 Object-Oriented Design Patterns** and complete financial management capabilities.
 
@@ -260,7 +260,7 @@ This project is licensed under the MIT License.
 
 **Original Project**: Alison Bruno's Bank Application  
 **Refactoring & Design Patterns**: João Euclides ([@jwaozera](https://github.com/jwaozera))  
-**Course**: Software Design (Projeto de Software)  
+**Course**: Software Design (Projeto de Software) - Professor Baldoino Fonseca  
 **Focus**: Design Pattern Implementation & Architectural Refactoring
 
 ---
