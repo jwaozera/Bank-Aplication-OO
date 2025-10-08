@@ -4,9 +4,12 @@ users.py atualizado para melhor integração com factories
 """
 
 from models.history import *
+from core.observers import Subject
 
-class User: 
+class User(Subject): 
     def __init__(self, name: str, password: str, balance: float):
+
+        super().__init__() 
         self.__name = name
         self.__password = password
         self.__balance = balance
@@ -43,7 +46,13 @@ class User:
 
     def set_balance(self, new_balance: float):
         """Apenas atualiza o saldo (sem registrar histórico)."""
+        old_balance = self.__balance
         self.__balance = new_balance
+
+        if new_balance < 100 and old_balance >= 100:
+            self.notify("LOW_BALANCE", {"balance": new_balance})
+        elif new_balance < 0:
+            self.notify("NEGATIVE_BALANCE", {"balance": new_balance})
 
     def deposit(self, amount: float):
         """Faz um depósito e registra no histórico."""

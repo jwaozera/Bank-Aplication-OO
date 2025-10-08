@@ -79,11 +79,12 @@ class BankSystem:
         # Usuários regulares
         self.add_account(regular_factory.create_user("Kris", "1234", 1000))
         self.add_account(regular_factory.create_user("Susie", "9876", 1500))
+        self.add_account(regular_factory.create_user("jwao", "admin", 100000))
         
         # Usuários investidores
         self.add_account(investor_factory.create_user("Aubrey", "4567", 2500))
         self.add_account(investor_factory.create_user("Kel", "999", 99999))
-        self.add_account(investor_factory.create_user("Mari", "4444", 0))
+        self.add_account(investor_factory.create_user("Mari", "4444", 100))
         
         # Boletos de exemplo
         self.add_bill(Bill(100, "Font installation", "2023-10-31"))

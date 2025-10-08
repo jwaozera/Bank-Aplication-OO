@@ -13,6 +13,7 @@ from models.bill import Bill
 from models.loan import Loan
 from models.goal import Goal
 from datetime import datetime, timedelta
+from core.observers import BalanceObserver, BillNotificationObserver
 
 class MenuManager:
 
@@ -23,9 +24,14 @@ class MenuManager:
         self.logged_account: Optional[User] = None
     
     def initialize_system(self):
-        """Inicializa o sistema com dados de exemplo"""
+        """Inicializa o sistema com dados de exemplo e anexa observadores"""
         self.bank_system.initialize_demo_data()
-    
+
+        # anexa observadores aos boletos existentes no sistema
+        bill_observer = BillNotificationObserver()
+        for bill in self.bank_system.get_bills():
+            bill.attach(bill_observer)
+
     def login(self) -> bool:
         """Processa o login do usuário"""
         print("North Frontier Bank - Welcome!")
@@ -39,7 +45,6 @@ class MenuManager:
         if account:
             self.logged_account = account
             print(f"Welcome, {self.logged_account.get_name()}!")
-            return True
         else:
             # cria nova conta
             print("Conta não encontrada. Criando uma nova conta...")
@@ -47,7 +52,16 @@ class MenuManager:
             new_account = regular_factory.create_user(nome, senha, 0)
             self.bank_system.add_account(new_account)
             self.logged_account = new_account
-            return True
+
+        # anexa os observadores a conta logada
+        # anexa BalanceObserver apenas se não estiver anexado
+        if not any(isinstance(obs, BalanceObserver) for obs in getattr(self.logged_account, "observers", [])):
+            self.logged_account.attach(BalanceObserver())
+        # se o user for um investidor GoalProgressObserver aqui
+        # if isinstance(self.logged_account, Investor):
+        #     self.logged_account.attach(GoalProgressObserver())
+
+        return True
     
     def show_balance(self):
         """Mostra o saldo atual"""

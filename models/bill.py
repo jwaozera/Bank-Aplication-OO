@@ -12,12 +12,15 @@ The list of bills will be declared in the main module. (or at least will be exec
 from datetime import datetime
 from models.users import *
 from models.history import *
+from core.observers import Subject
 
-class Bill:
+
+class Bill(Subject):
     def __init__(self, value: float, description: str, due_date: str):
         """
         due_date needs to be in the format 'YYYY-MM-DD'
         """
+        super().__init__()  
         self.__value = value
         self.__description = description
         self.__due_date = datetime.strptime(due_date, "%Y-%m-%d")
@@ -63,6 +66,11 @@ class Bill:
         if user.get_balance() < self.__value:
             raise ValueError("Insufficient balance to pay the bill.")
 
+        self.notify("BILL_PAID", {
+            "description": self.__description,
+            "amount": self.__value
+        })    
+
         #deduct from balance
         user.set_balance(user.get_balance() - self.__value)
 
@@ -80,3 +88,13 @@ class Bill:
         user.add_history(history_entry)
 
         print("Bill paid successfully.")
+
+        def check_overdue(self):
+            """
+            check if the bill is overdue and notify if it is
+            """
+            if self.is_overdue():
+                self.notify("BILL_OVERDUE", {
+                    "description": self.__description,
+                    "amount": self.__value
+                })
