@@ -11,21 +11,21 @@
 
 1. Design Patterns Implementados
 
-Singleton Pattern: Para gerenciar uma única instância do sistema bancário
-Factory Method Pattern: Para criação de diferentes tipos de usuários
-Abstract Factory Pattern: Para criar famílias de objetos de histórico de transações
+- Singleton Pattern: Para gerenciar uma única instância do sistema bancário
+- Factory Method Pattern: Para criação de diferentes tipos de usuários
+- Abstract Factory Pattern: Para criar famílias de objetos de histórico de transações
 
 2. Arquitetura Modular
 
-Antes: Um arquivo main.py com muitas linhas
-Depois: Estrutura modular com separação clara de responsabilidades
+- Antes: Um arquivo main.py com muitas linhas
+- Depois: Estrutura modular com separação clara de responsabilidades
 
 3. Melhorias Significativas
 
-Interface de usuário aprimorada visual + formatação
-Sistema completo de atendimento ao cliente
-Tratamento robusto de erros
-Gerenciamento avançado de contas
+- Interface de usuário aprimorada visual + formatação
+- Sistema completo de atendimento ao cliente
+- Tratamento robusto de erros
+- Gerenciamento avançado de contas
 
 
 ## Objetos para se utilizar
