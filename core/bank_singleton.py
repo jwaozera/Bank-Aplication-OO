@@ -1,8 +1,6 @@
 """
-
-Singleton 
-Garante que existe apenas uma instância do sistema bancário
-
+Singleton - CORRIGIDO
+Adiciona métodos para filtrar bills por usuário
 """
 
 from typing import List, Optional
@@ -10,7 +8,6 @@ from models.users import User
 from models.bill import Bill
 
 class BankSystem:
-
     """Singleton que gerencia todo o sistema bancário"""
     
     _instance = None
@@ -64,9 +61,30 @@ class BankSystem:
         """Retorna todas as contas exceto a atual"""
         return [acc for acc in self._accounts if acc != current_account]
     
-    def get_unpaid_bills(self) -> List[Bill]:
-        """Retorna apenas os boletos não pagos"""
-        return [bill for bill in self._bills if not bill.is_paid()]
+    def get_unpaid_bills(self, user: User = None) -> List[Bill]:
+        """
+        Retorna boletos não pagos
+        CORRIGIDO: Se user fornecido, retorna apenas bills daquele usuário
+        """
+        unpaid = [bill for bill in self._bills if not bill.is_paid()]
+        
+        # NOVO: Filtra por usuário se fornecido
+        if user:
+            unpaid = [bill for bill in unpaid if bill.get_owner() == user or bill.get_owner() is None]
+        
+        return unpaid
+    
+    def get_user_bills(self, user: User, paid: bool = None) -> List[Bill]:
+        """
+        NOVO: Retorna bills de um usuário específico
+        paid: None (todas), True (pagas), False (não pagas)
+        """
+        user_bills = [bill for bill in self._bills if bill.get_owner() == user]
+        
+        if paid is not None:
+            user_bills = [bill for bill in user_bills if bill.is_paid() == paid]
+        
+        return user_bills
     
     def initialize_demo_data(self) -> None:
         """Inicializa dados de demonstração"""
@@ -77,15 +95,34 @@ class BankSystem:
         investor_factory = UserFactoryProvider.get_factory("investor")
         
         # Usuários regulares
-        self.add_account(regular_factory.create_user("Kris", "1234", 1000))
-        self.add_account(regular_factory.create_user("Susie", "9876", 1500))
-        self.add_account(regular_factory.create_user("jwao", "admin", 100000))
+        kris = regular_factory.create_user("Kris", "1234", 1000)
+        susie = regular_factory.create_user("Susie", "9876", 1500)
+        jwao = regular_factory.create_user("jwao", "admin", 100000)
         
         # Usuários investidores
-        self.add_account(investor_factory.create_user("Aubrey", "4567", 2500))
-        self.add_account(investor_factory.create_user("Kel", "999", 99999))
-        self.add_account(investor_factory.create_user("Mari", "4444", 100))
+        aubrey = investor_factory.create_user("Aubrey", "4567", 2500)
+        kel = investor_factory.create_user("Kel", "999", 99999)
+        mari = investor_factory.create_user("Mari", "4444", 100)
         
-        # Boletos de exemplo
-        self.add_bill(Bill(100, "Font installation", "2023-10-31"))
-        self.add_bill(Bill(200, "Stair railing", "2023-11-15"))
+        # Adiciona ao sistema
+        self.add_account(kris)
+        self.add_account(susie)
+        self.add_account(jwao)
+        self.add_account(aubrey)
+        self.add_account(kel)
+        self.add_account(mari)
+        
+        # CORRIGIDO: Boletos específicos por usuário
+        bill1 = Bill(100, "Internet Bill", "2023-10-31", owner=kris)
+        bill2 = Bill(200, "Electricity Bill", "2023-11-15", owner=kris)
+        bill3 = Bill(150, "Water Bill", "2023-12-01", owner=susie)
+        bill4 = Bill(500, "Phone Bill", "2023-11-20", owner=aubrey)
+        
+        self.add_bill(bill1)
+        self.add_bill(bill2)
+        self.add_bill(bill3)
+        self.add_bill(bill4)
+        
+        # Bills globais (sem owner - qualquer um pode pagar)
+        global_bill = Bill(50, "Community Fee", "2023-12-15", owner=None)
+        self.add_bill(global_bill)

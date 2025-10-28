@@ -1,12 +1,6 @@
 """
-In this module, we define the Bill and everything around them
-
-We need: 
- - The value of the bill
- - The due date of the bill
- - The status of the bill (paid/unpaid) (if paid we need to exclude it from the list of bills)
-
-The list of bills will be declared in the main module. (or at least will be executed in a function later)
+Bill module - CORRIGIDO
+Agora cada bill pertence a um usuário específico
 """
 
 from datetime import datetime
@@ -16,15 +10,17 @@ from core.observers import Subject
 
 
 class Bill(Subject):
-    def __init__(self, value: float, description: str, due_date: str):
+    def __init__(self, value: float, description: str, due_date: str, owner: User = None):
         """
         due_date needs to be in the format 'YYYY-MM-DD'
+        owner: User que possui este boleto (NOVO)
         """
         super().__init__()  
         self.__value = value
         self.__description = description
         self.__due_date = datetime.strptime(due_date, "%Y-%m-%d")
         self.__paid = False
+        self.__owner = owner  # NOVO: dono do boleto
 
     # ---------- Getters ----------
     def get_value(self) -> float:
@@ -38,6 +34,10 @@ class Bill(Subject):
     
     def get_description(self) -> str:
         return self.__description
+    
+    def get_owner(self) -> User:
+        """ retorna o dono do boleto"""
+        return self.__owner
 
     # ---------- Setters ----------
     def set_value(self, new_value: float):
@@ -48,6 +48,10 @@ class Bill(Subject):
 
     def set_paid(self, paid: bool):
         self.__paid = paid
+    
+    def set_owner(self, owner: User):
+        """ define o dono do boleto"""
+        self.__owner = owner
 
     # ---------- Métodos extras ----------
     def is_overdue(self) -> bool:
@@ -59,9 +63,14 @@ class Bill(Subject):
     def pay(self, user: User):
         """
         Pays the bill and updates the user's balance and history.
+        verifica se o usuário é o dono do boleto
         """
         if self.__paid:
             raise ValueError("This bill has already been paid.")
+        
+        # verifica se é o dono do boleto
+        if self.__owner and user != self.__owner:
+            raise ValueError(f"This bill belongs to {self.__owner.get_name()}. You cannot pay it.")
 
         if user.get_balance() < self.__value:
             raise ValueError("Insufficient balance to pay the bill.")
@@ -71,13 +80,13 @@ class Bill(Subject):
             "amount": self.__value
         })    
 
-        #deduct from balance
+        # Deduct from balance
         user.set_balance(user.get_balance() - self.__value)
 
-        #mark bill as paid
+        # Mark bill as paid
         self.__paid = True
 
-        #add history entry
+        # Add history entry
         description = f"Paid bill of {self.__value} due on {self.__due_date.date()}"
         history_entry = History_bill(
             action="Bill Payment",
@@ -89,12 +98,12 @@ class Bill(Subject):
 
         print("Bill paid successfully.")
 
-        def check_overdue(self):
-            """
-            check if the bill is overdue and notify if it is
-            """
-            if self.is_overdue():
-                self.notify("BILL_OVERDUE", {
-                    "description": self.__description,
-                    "amount": self.__value
-                })
+    def check_overdue(self):
+        """
+        Check if the bill is overdue and notify if it is
+        """
+        if self.is_overdue():
+            self.notify("BILL_OVERDUE", {
+                "description": self.__description,
+                "amount": self.__value
+            })

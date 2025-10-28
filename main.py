@@ -1,6 +1,8 @@
 """
-Main refatorada aplicando os design patterns (Factory method Singleton e Abstract Factory)
-
+Main refatorada aplicando os design patterns:
+- Singleton, Factory Method, Abstract Factory 
+- Template Method, Observer, Strategy 
+- Decorator, Facade, Adapter (NOVOS - Padrões Estruturais)
 """
 from core.menu_manager import MenuManager
 from core.customer_service import CustomerService
@@ -34,10 +36,38 @@ def main():
             if bill.is_overdue():
                 print(f"⚠️ Overdue Bill: {bill.get_description()} - Valor: R$ {bill.get_value():.2f}")
         
-        print("=" * 50)
+        print("\n" + "="*60)
+        print("🏦 NORTH FRONTIER BANK - MAIN MENU")
+        print("="*60)
         
-        # mostra menu de opções
-        choice = ask("\n1. Balance\n2. Withdraw\n3. Deposit\n4. View History\n5. Transfer\n6. Change Account\n7. Pay Bill\n8. Exchange Real -> Dollar \n9. Exchange Dollar -> Real\n10. Loan\n11. Checkbook\n12. Create Investment Goal\n13. Deposit in Goal\n14. Customer Service\n15. Exit\n")
+        # Menu principal expandido com novos padrões
+        menu_text = """
+╔══════════════════════════════════════════════════════════╗
+║                    BASIC OPERATIONS                      ║
+╠══════════════════════════════════════════════════════════╣
+        1. 💰 Show Balance       2.  🏧 Withdraw
+        3. 💵 Deposit            4.  📜 View History
+        5. 🔄 Transfer           6.  🔐 Change Account
+╠══════════════════════════════════════════════════════════╣
+║                   PAYMENTS & LOANS                       ║
+╠══════════════════════════════════════════════════════════╣
+        7.  💳 Pay Bill           8.  💱 Real → Dollar          
+        9.  💱 Dollar → Real      10. 💰 Loan                   
+        11. 📔 Checkbook          12. 🎯 Create Goal            
+        13. 📊 Deposit in Goal    14. 🛎️ Customer Service       
+╠══════════════════════════════════════════════════════════╣
+                 🆕 NEW FEATURES UPDATE              
+╠══════════════════════════════════════════════════════════╣
+        15. ✨ Upgrade Account (Decorator Pattern)              
+        16. ⚡ Quick Operations (Facade Pattern)                 
+        17. 💳 Payment Methods (Adapter Pattern)                 
+        18. 🎓 Demo of All Patterns                           
+╠══════════════════════════════════════════════════════════╣
+        0. ❌ Exit                                             
+╚══════════════════════════════════════════════════════════╝
+"""
+        
+        choice = ask(menu_text)
         
         # escolha do usuário
         if choice == '1':
@@ -56,7 +86,6 @@ def main():
             menu_manager.process_transfer()
             
         elif choice == '6':
-            # se a troca de conta deu bom continua com a nova conta
             menu_manager.change_account()
             
         elif choice == '7':
@@ -69,7 +98,7 @@ def main():
             menu_manager.exchange_dollar_to_real()
             
         elif choice == '10':
-            menu_manager.process_loan()
+            menu_manager.process_loan_with_strategy()
             
         elif choice == '11':
             menu_manager.order_checkbook()
@@ -82,13 +111,42 @@ def main():
             
         elif choice == '14':
             CustomerService.show_menu()
-            
+        
+        # ========== NOVOS: PADRÕES ESTRUTURAIS ==========
+        
         elif choice == '15':
+            # DECORATOR PATTERN
+            menu_manager.upgrade_account()
+            
+        elif choice == '16':
+            # FACADE PATTERN
+            menu_manager.quick_operations_menu()
+            
+        elif choice == '17':
+            # ADAPTER PATTERN
+            menu_manager.payment_methods_menu()
+            
+        elif choice == '18':
+            # DEMONSTRAÇÃO DOS PADRÕES
+            menu_manager.demonstrate_patterns()
+        
+        # ===============================================
+            
+        elif choice == '0':
+            print("\n" + "="*60)
+            print("👋 Thank you for using North Frontier Bank!")
+            print("="*60)
+            print("\n📊 Design Patterns Implemented:")
+            print("   ✅ Creational: Singleton, Factory Method, Abstract Factory")
+            print("   ✅ Behavioral: Observer, Template Method, Strategy")
+            print("   ✅ Structural: Decorator, Facade, Adapter")
+            print("\n🎓 Total: 9 Design Patterns")
+            print("="*60)
             print("Exiting...")
             break
             
         else:
-            print("Invalid option. Please try again.")
+            print("❌ Invalid option. Please try again.")
             input("Press Enter to continue...")
 
 if __name__ == "__main__":

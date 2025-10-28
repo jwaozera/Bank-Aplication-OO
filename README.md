@@ -25,7 +25,7 @@ North Frontier Bank is a modular banking application that demonstrates professio
 - 📊 **Investment Goals**: Track and achieve financial targets (Investor accounts)
 - 📝 **Transaction History**: Complete audit trail of all operations
 - 🔔 **Smart Notifications**: Real-time alerts using Observer pattern
-- 🛟 **Customer Service**: Comprehensive help system
+- 🛎️ **Customer Service**: Comprehensive help system
 
 ---
 
