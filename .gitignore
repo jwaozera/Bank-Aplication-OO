@@ -28,3 +28,5 @@ dist/
 *.log
 
 tests.py
+core/__pycache__/
+models/__pycache__/

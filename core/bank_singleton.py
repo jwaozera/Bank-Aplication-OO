@@ -1,6 +1,5 @@
 """
-Singleton - CORRIGIDO
-Adiciona métodos para filtrar bills por usuário
+Singleton
 """
 
 from typing import List, Optional

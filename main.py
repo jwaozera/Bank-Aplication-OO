@@ -2,7 +2,7 @@
 Main refatorada aplicando os design patterns:
 - Singleton, Factory Method, Abstract Factory 
 - Template Method, Observer, Strategy 
-- Decorator, Facade, Adapter (NOVOS - Padrões Estruturais)
+- Decorator, Facade, Adapter (Padrões Estruturais)
 """
 from core.menu_manager import MenuManager
 from core.customer_service import CustomerService
