@@ -136,6 +136,123 @@ bill.attach(BillNotificationObserver())
 
 ---
 
+### 6️⃣ **Strategy Pattern** (Behavioral)
+**Location**: `core/loan_strategy.py`
+
+Defines a family of loan approval algorithms and makes them interchangeable based on user type and requirements.
+
+**Benefits**:
+- Flexible loan policies without modifying existing code
+- Easy to add new loan strategies
+- Dynamic strategy selection at runtime
+- Encapsulates different approval criteria
+
+**Strategies Implemented**:
+- `StandardLoanStrategy`: Default policy for regular users (2x balance, 5% interest)
+- `InvestorLoanStrategy`: Premium conditions for investors (3x balance, 3% interest)
+- `ConservativeLoanStrategy`: Stricter requirements (1.5x balance, 6% interest)
+
+```python
+# Automatic strategy selection based on user type
+strategy = LoanStrategyProvider.get_strategy(user, "auto")
+processor = LoanProcessor(user, strategy)
+processor.process_loan_request(amount, duration)
+```
+
+---
+
+### 7️⃣ **Decorator Pattern** (Structural)
+**Location**: `core/decorators.py`
+
+Dynamically adds responsibilities to user accounts without modifying their structure.
+
+**Benefits**:
+- Add features dynamically at runtime
+- Stack multiple decorators for combined functionality
+- Follows Open/Closed Principle
+- No need to modify base User class
+
+**Decorators Implemented**:
+- `PremiumAccountDecorator`: 1% cashback on withdrawals, better exchange rates
+- `InsuranceDecorator`: Protection for large transactions (>R$ 5,000)
+- `NotificationDecorator`: SMS/Email alerts for all transactions
+- `StudentAccountDecorator`: Fee exemptions, daily withdrawal limits
+- `VIPDecorator`: Personal manager, reduced interest rates
+
+```python
+# Stack decorators for combined features
+user = PremiumAccountDecorator(user)
+user = InsuranceDecorator(user)
+user = NotificationDecorator(user, email="user@email.com", phone="123456789")
+```
+
+---
+
+### 8️⃣ **Facade Pattern** (Structural)
+**Location**: `core/facades.py`
+
+Provides simplified interfaces to complex subsystems for common banking operations.
+
+**Benefits**:
+- Simplifies complex multi-step operations
+- Reduces learning curve for system usage
+- Encapsulates business logic
+- Makes the system easier to use and understand
+
+**Facades Implemented**:
+- `BankingFacade`: Simplified banking operations (quick transfers, pay all bills, emergency loans)
+- `InvestmentFacade`: Portfolio management (diversified portfolios, auto-invest)
+- `ReportFacade`: Financial reporting (account summaries, tax reports, comparisons)
+
+```python
+# Complex operation simplified into one call
+facade = BankingFacade(user)
+facade.pay_all_bills(filter_overdue=True)
+
+# Multi-step portfolio creation made easy
+investment_facade = InvestmentFacade(investor)
+investment_facade.create_diversified_portfolio(total_amount, goals_list)
+```
+
+---
+
+### 9️⃣ **Adapter Pattern** (Structural)
+**Location**: `core/adapters.py`
+
+Integrates external payment systems (PIX, Credit Card, Crypto, International) with the bank's internal interface.
+
+**Benefits**:
+- Seamless integration with third-party APIs
+- Uniform interface for different payment methods
+- Easy to add new payment providers
+- Isolates system from external API changes
+
+**Adapters Implemented**:
+- `PixAdapter`: Integrates PIX payment system with key validation
+- `CreditCardAdapter`: Credit card gateway with CVV/expiry validation
+- `CryptoAdapter`: Cryptocurrency exchange (BTC, ETH)
+- `InternationalBankAdapter`: SWIFT international transfers
+
+**External APIs Simulated**:
+- `PixAPI`: Brazilian instant payment system
+- `CreditCardGateway`: Card processing with validation
+- `CryptoExchangeAPI`: Cryptocurrency trading
+- `InternationalBankingAPI`: SWIFT transfers
+
+```python
+# Unified payment interface for different methods
+payment_manager = PaymentManager(user)
+
+# Add various payment methods
+pix_adapter = PixAdapter(pix_api, user, "user@email.com")
+card_adapter = CreditCardAdapter(gateway, user, card_number, cvv, expiry, name)
+
+payment_manager.add_payment_method("PIX", pix_adapter)
+payment_manager.add_payment_method("Credit Card", card_adapter)
+
+# Pay using any method with same interface
+payme
+
 ## 📁 Project Structure
 
 ```
