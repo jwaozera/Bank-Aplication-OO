@@ -56,12 +56,12 @@ def main():
         11. 📔 Checkbook          12. 🎯 Create Goal            
         13. 📊 Deposit in Goal    14. 🛎️ Customer Service       
 ╠══════════════════════════════════════════════════════════╣
-                 🆕 NEW FEATURES UPDATE              
+                      OTHER FEATURES               
 ╠══════════════════════════════════════════════════════════╣
-        15. ✨ Upgrade Account (Decorator Pattern)              
-        16. ⚡ Quick Operations (Facade Pattern)                 
-        17. 💳 Payment Methods (Adapter Pattern)                 
-        18. 🎓 Demo of All Patterns                           
+        15. ✨ Upgrade Account               
+        16. ⚡ Quick Operations                  
+        17. 💳 Payment Methods                 
+                                 
 ╠══════════════════════════════════════════════════════════╣
         0. ❌ Exit                                             
 ╚══════════════════════════════════════════════════════════╝
@@ -72,7 +72,7 @@ def main():
         # escolha do usuário
         if choice == '1':
             menu_manager.show_balance()
-            
+            c
         elif choice == '2':
             menu_manager.process_withdrawal()
             
@@ -112,7 +112,7 @@ def main():
         elif choice == '14':
             CustomerService.show_menu()
         
-        # ========== NOVOS: PADRÕES ESTRUTURAIS ==========
+        # ========== PADRÕES ESTRUTURAIS ==========
         
         elif choice == '15':
             # DECORATOR PATTERN
@@ -126,22 +126,12 @@ def main():
             # ADAPTER PATTERN
             menu_manager.payment_methods_menu()
             
-        elif choice == '18':
-            # DEMONSTRAÇÃO DOS PADRÕES
-            menu_manager.demonstrate_patterns()
         
         # ===============================================
             
         elif choice == '0':
             print("\n" + "="*60)
             print("👋 Thank you for using North Frontier Bank!")
-            print("="*60)
-            print("\n📊 Design Patterns Implemented:")
-            print("   ✅ Creational: Singleton, Factory Method, Abstract Factory")
-            print("   ✅ Behavioral: Observer, Template Method, Strategy")
-            print("   ✅ Structural: Decorator, Facade, Adapter")
-            print("\n🎓 Total: 9 Design Patterns")
-            print("="*60)
             print("Exiting...")
             break
             

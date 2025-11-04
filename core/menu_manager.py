@@ -1,6 +1,14 @@
 """
-Menu Manager - Gerencia todas as operações do menu
-Utilizando os padrões implementados para executar operações
+Menu Manager - TRATAMENTO ROBUSTO DE EXCEÇÕES
+
+EXCEÇÕES TRATADAS:
+1. ValueError - conversões de tipo inválidas
+2. IndexError - acesso a índices inválidos
+3. TypeError - tipos de dados incorretos
+4. AttributeError - atributos inexistentes
+5. ZeroDivisionError - divisões por zero
+6. KeyError - chaves de dicionário inexistentes
+7. Exceções personalizadas para regras de negócio
 
 """
 
@@ -16,931 +24,637 @@ from datetime import datetime, timedelta
 from core.observers import BalanceObserver, BillNotificationObserver
 from core.loan_strategy import *
 
-class MenuManager:
 
-    """Gerencia todas as operações do menu do sistema bancário"""
+# ==================== EXCEÇÕES PERSONALIZADAS ====================
+
+class BankingException(Exception):
+    """Exceção base para erros bancários"""
+    pass
+
+class InsufficientBalanceException(BankingException):
+    """Lançada quando saldo é insuficiente"""
+    pass
+
+class InvalidAmountException(BankingException):
+    """Lançada quando o valor da transação é inválido"""
+    pass
+
+class AccountNotFoundException(BankingException):
+    """Lançada quando conta não é encontrada"""
+    pass
+
+class InvalidCredentialsException(BankingException):
+    """Lançada quando credenciais estão incorretas"""
+    pass
+
+class InvestorOnlyFeatureException(BankingException):
+    """Lançada quando recurso é exclusivo para investidores"""
+    pass
+
+
+# ==================== UTILS VALIDAÇÃO ====================
+
+class InputValidator:
+
+    """Classe utilitária para validação de entradas"""
+    
+    @staticmethod
+    def get_float_input(prompt: str, min_value: float = 0, max_value: float = float('inf')) -> float:
+        """
+        Obtém entrada float com validação robusta
+        
+        Previne ValueError e garante valores dentro do range esperado
+        """
+        while True:
+            try:
+                value = float(input(prompt))
+                
+                if value < min_value:
+                    print(f"❌ Value must be at least {min_value}")
+                    continue
+                    
+                if value > max_value:
+                    print(f"❌ Value cannot exceed {max_value}")
+                    continue
+                    
+                return value
+                
+            except ValueError:
+                # TRATAMENTO: ValueError quando conversão para float falha
+                print("❌ Invalid input. Please enter a valid number.")
+            except KeyboardInterrupt:
+                # TRATAMENTO: Permite ao usuário cancelar com Ctrl+C
+                print("\n❌ Input cancelled by user.")
+                raise
+    
+    @staticmethod
+    def get_int_input(prompt: str, min_value: int = 0, max_value: int = 999999) -> int:
+        """
+        Obtém entrada int com validação
+        
+        Previne ValueError e IndexError em seleções de menu
+        """
+        while True:
+            try:
+                value = int(input(prompt))
+                
+                if value < min_value or value > max_value:
+                    print(f"❌ Please enter a number between {min_value} and {max_value}")
+                    continue
+                    
+                return value
+                
+            except ValueError:
+                # TRATAMENTO: ValueError em conversão para int
+                print("❌ Invalid input. Please enter a whole number.")
+            except KeyboardInterrupt:
+                print("\n❌ Input cancelled.")
+                raise
+    
+    @staticmethod
+    def get_choice(prompt: str, valid_options: list) -> str:
+        """
+        Obtém escolha validada de uma lista
+        
+        Previne KeyError e garante opções válidas
+        """
+        while True:
+            try:
+                choice = input(prompt).strip().lower()
+                
+                if choice in valid_options:
+                    return choice
+                    
+                print(f"❌ Invalid option. Choose from: {', '.join(valid_options)}")
+                
+            except KeyboardInterrupt:
+                print("\n❌ Selection cancelled.")
+                raise
+
+
+class MenuManager:
+    """Gerencia operações do menu"""
     
     def __init__(self):
         self.bank_system = BankSystem()
         self.logged_account: Optional[User] = None
+        self.validator = InputValidator()
     
     def initialize_system(self):
-        """Inicializa o sistema com dados de exemplo e anexa observadores"""
-        self.bank_system.initialize_demo_data()
-
-        # anexa observadores aos boletos existentes no sistema
-        bill_observer = BillNotificationObserver()
-        for bill in self.bank_system.get_bills():
-            bill.attach(bill_observer)
-
+        """
+        Inicializa sistema com tratamento de exceções
+        
+        Garante que falhas na inicialização não quebrem o programa
+        """
+        try:
+            self.bank_system.initialize_demo_data()
+            
+            # Anexa observadores com proteção
+            bill_observer = BillNotificationObserver()
+            for bill in self.bank_system.get_bills():
+                try:
+                    bill.attach(bill_observer)
+                except AttributeError as e:
+                    # TRATAMENTO: Se bill não tem método attach
+                    print(f"⚠️ Warning: Could not attach observer to bill: {e}")
+                    
+        except Exception as e:
+            # TRATAMENTO: Qualquer erro na inicialização
+            print(f"❌ Error initializing system: {e}")
+            print("System will start with default configuration.")
+    
     def login(self) -> bool:
-        """Processa o login do usuário"""
-        print("North Frontier Bank - Welcome!")
-        print("Log in to an existing account or create a new one.")
-        nome = input("Enter your name: ")
-        senha = input("Enter your password: ")
+        """
+        Login com tratamento completo de exceções
         
-        # busca conta existente
-        account = self.bank_system.find_account(nome, senha)
+        Evita crashes por credenciais inválidas ou erros de criação de conta
+        """
+        max_attempts = 3
+        attempts = 0
         
-        if account:
-            self.logged_account = account
-            print(f"Welcome, {self.logged_account.get_name()}!")
-        else:
-            # cria nova conta
-            print("Conta não encontrada. Criando uma nova conta...")
-            regular_factory = UserFactoryProvider.get_factory("regular")
-            new_account = regular_factory.create_user(nome, senha, 0)
-            self.bank_system.add_account(new_account)
-            self.logged_account = new_account
-
-        # anexa os observadores a conta logada
-        # anexa BalanceObserver apenas se não estiver anexado
-        if not any(isinstance(obs, BalanceObserver) for obs in getattr(self.logged_account, "observers", [])):
-            self.logged_account.attach(BalanceObserver())
-        # se o user for um investidor GoalProgressObserver aqui
-        # if isinstance(self.logged_account, Investor):
-        #     self.logged_account.attach(GoalProgressObserver())
-
-        return True
+        while attempts < max_attempts:
+            try:
+                print("\n" + "="*60)
+                print("🏦 North Frontier Bank - Welcome!")
+                print("="*60)
+                
+                nome = input("Enter your name: ").strip()
+                
+                # Valida nome não vazio
+                if not nome:
+                    raise InvalidCredentialsException("Name cannot be empty")
+                
+                senha = input("Enter your password: ").strip()
+                
+                if not senha:
+                    raise InvalidCredentialsException("Password cannot be empty")
+                
+                # Busca conta existente
+                account = self.bank_system.find_account(nome, senha)
+                
+                if account:
+                    self.logged_account = account
+                    print(f"✅ Welcome back, {self.logged_account.get_name()}!")
+                    
+                    # Anexa observadores com tratamento
+                    try:
+                        if not any(isinstance(obs, BalanceObserver) for obs in getattr(self.logged_account, "_observers", [])):
+                            self.logged_account.attach(BalanceObserver())
+                    except (AttributeError, TypeError) as e:
+                        # TRATAMENTO: Falha ao anexar observador
+                        print(f"⚠️ Warning: Observer attachment failed: {e}")
+                    
+                    return True
+                else:
+                    # Cria nova conta
+                    print("\n📝 Account not found. Creating new account...")
+                    
+                    try:
+                        regular_factory = UserFactoryProvider.get_factory("regular")
+                        new_account = regular_factory.create_user(nome, senha, 0)
+                        self.bank_system.add_account(new_account)
+                        self.logged_account = new_account
+                        
+                        print(f"✅ Account created successfully for {nome}!")
+                        return True
+                        
+                    except ValueError as e:
+                        # TRATAMENTO: Erro na criação da conta
+                        raise BankingException(f"Account creation failed: {e}")
+                        
+            except InvalidCredentialsException as e:
+                # TRATAMENTO: Credenciais inválidas
+                attempts += 1
+                remaining = max_attempts - attempts
+                print(f"❌ {e}")
+                if remaining > 0:
+                    print(f"Attempts remaining: {remaining}")
+                    
+            except BankingException as e:
+                # TRATAMENTO: Erros bancários específicos
+                print(f"❌ Banking error: {e}")
+                attempts += 1
+                
+            except KeyboardInterrupt:
+                # TRATAMENTO: Usuário cancelou (Ctrl+C)
+                print("\n\n❌ Login cancelled by user.")
+                return False
+                
+            except Exception as e:
+                # TRATAMENTO: Qualquer outro erro inesperado
+                print(f"❌ Unexpected error during login: {e}")
+                attempts += 1
+        
+        print(f"\n❌ Maximum login attempts ({max_attempts}) exceeded.")
+        return False
     
     def show_balance(self):
-        """Mostra o saldo atual"""
-        print(f"Your balance is: R$ {self.logged_account.get_balance():.2f}")
-        print(f"Your dollar balance is: $ {self.logged_account.get_dolar_balance():.2f}")
+        """
+        Mostra saldo com proteção contra erros
+        
+        Previne AttributeError se conta não estiver logada
+        """
+        try:
+            if not self.logged_account:
+                raise AccountNotFoundException("No account logged in")
+            
+            balance = self.logged_account.get_balance()
+            dolar_balance = self.logged_account.get_dolar_balance()
+            
+            print("\n" + "="*50)
+            print("💰 ACCOUNT BALANCE")
+            print("="*50)
+            print(f"Real (R$): {balance:.2f}")
+            print(f"Dollar ($): {dolar_balance:.2f}")
+            print("="*50)
+            
+        except AccountNotFoundException as e:
+            print(f"❌ {e}")
+        except AttributeError as e:
+            # TRATAMENTO: Métodos get_balance não existem
+            print(f"❌ Error accessing account data: {e}")
+        except Exception as e:
+            print(f"❌ Unexpected error showing balance: {e}")
+        finally:
+            input("\nPress Enter to continue...")
     
     def process_withdrawal(self):
-        """Processa saque"""
+        """
+        Saque com tratamento completo de exceções
+        
+        Operação financeira crítica - requer validação rigorosa
+        """
         try:
-            amount = float(input("Enter the amount to withdraw: "))
+            print("\n" + "="*50)
+            print("🏧 WITHDRAWAL")
+            print("="*50)
+            
+            if not self.logged_account:
+                raise AccountNotFoundException("No account logged in")
+            
+            current_balance = self.logged_account.get_balance()
+            print(f"Current balance: R$ {current_balance:.2f}")
+            
+            # validação robusta de entrada
+            amount = self.validator.get_float_input(
+                "Enter withdrawal amount (R$): ",
+                min_value=0.01,
+                max_value=current_balance
+            )
+            
+            # validação de saldo
+            if amount > current_balance:
+                raise InsufficientBalanceException(
+                    f"Insufficient balance. Available: R$ {current_balance:.2f}"
+                )
+            
+            # Executa saque
             self.logged_account.withdraw(amount)
             
-            # factory para criar histórico
+            # Cria histórico
             factory = TransactionFactoryProvider.get_factory(self.logged_account)
             history = factory.create_transaction_history(
                 "Withdrawal",
-                f"Withdrew {amount} from account",
+                f"Withdrew R$ {amount:.2f} from account",
                 amount,
                 self.logged_account.get_balance()
             )
             self.logged_account.add_history(history)
             
+            print(f"✅ Withdrawal successful!")
+            print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
+            
+        except AccountNotFoundException as e:
+            print(f"❌ {e}")
+        except InsufficientBalanceException as e:
+            print(f"❌ {e}")
+        except InvalidAmountException as e:
+            print(f"❌ {e}")
         except ValueError as e:
-            print(f"Error: {e}")
+            # TRATAMENTO: Erro no método withdraw
+            print(f"❌ Withdrawal error: {e}")
+        except AttributeError as e:
+            print(f"❌ Account data error: {e}")
+        except KeyboardInterrupt:
+            print("\n❌ Withdrawal cancelled.")
+        except Exception as e:
+            # TRATAMENTO: Erros inesperados
+            print(f"❌ Unexpected error during withdrawal: {e}")
+        finally:
+            input("\nPress Enter to continue...")
     
     def process_deposit(self):
-        """Processa depósito"""
+        """
+        Depósito com validação robusta
+        
+        Previne depósitos negativos ou inválidos
+        """
         try:
-            amount = float(input("Enter the amount to deposit: "))
+            print("\n" + "="*50)
+            print("💵 DEPOSIT")
+            print("="*50)
+            
+            if not self.logged_account:
+                raise AccountNotFoundException("No account logged in")
+            
+            amount = self.validator.get_float_input(
+                "Enter deposit amount (R$): ",
+                min_value=0.01,
+                max_value=1000000  # Limite máximo de depósito
+            )
+            
+            # depósito
             self.logged_account.deposit(amount)
             
-            # factory para criar histórico
+            # histórico
             factory = TransactionFactoryProvider.get_factory(self.logged_account)
             history = factory.create_transaction_history(
                 "Deposit",
-                f"Deposited {amount} into account",
+                f"Deposited R$ {amount:.2f} into account",
                 amount,
                 self.logged_account.get_balance()
             )
             self.logged_account.add_history(history)
             
-        except ValueError as e:
-            print(f"Error: {e}")
-    
-    def show_history(self):
-        """Mostra histórico de transações"""
-        print("\n========== History ==========\n")
-        historico = self.logged_account.get_history()
-        
-        if not historico:
-            print("📝 No transactions found.")
-        else:
-            print(f"📊 Total transactions: {len(historico)}")
-            print("-" * 50)
+            print(f"✅ Deposit successful!")
+            print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
             
-            for i, history in enumerate(historico, 1):
-                print(f"\n🔹 Transaction {i}:")
-                history.show()
-                print("-" * 30)
-        
-        print("\n" + "=" * 45)
-        input("Press Enter to continue...")
+        except AccountNotFoundException as e:
+            print(f"❌ {e}")
+        except ValueError as e:
+            print(f"❌ Deposit error: {e}")
+        except KeyboardInterrupt:
+            print("\n❌ Deposit cancelled.")
+        except Exception as e:
+            print(f"❌ Unexpected error during deposit: {e}")
+        finally:
+            input("\nPress Enter to continue...")
     
     def process_transfer(self):
-        """Processa transferência"""
-        print("\n========== Transfer ==========\n")
+        """
+        Transferência com tratamento extensivo de exceções
         
-        other_accounts = self.bank_system.get_other_accounts(self.logged_account)
-        
-        if not other_accounts:
-            print("No other accounts available for transfer.")
-            return
-        
-        # contas disponíveis
-        for i, account in enumerate(other_accounts, 1):
-            print(f"{i}. {account.get_name()}")
-        
+        Operação envolvendo duas contas - requer validação dupla
+        """
         try:
-            choice = int(input("Select the account to transfer to (number): "))
-            if 1 <= choice <= len(other_accounts):
-                target_account = other_accounts[choice - 1]
-                amount = float(input("Enter the amount to transfer: "))
-                
-                # Usa a função transaction existente
-                from models.users import transaction
-                transaction(self.logged_account, target_account, amount)
-                print(f"✅ Transfer completed successfully!")
-                
-            else:
-                print("Invalid account selection.")
-                
-        except (ValueError, IndexError) as e:
-            print(f"Error: {e}")
-    
-    def change_account(self) -> bool:
-        """Troca de conta - retorna True se mudou de conta"""
-        print("\n========== Change Account ==========\n")
-        print(f"Currently logged in as: {self.logged_account.get_name()}")
-        
-        other_accounts = self.bank_system.get_other_accounts(self.logged_account)
-        
-        if not other_accounts:
-            print("No other accounts available to switch to.")
-            input("Press Enter to continue...")
-            return False
-        
-        print("\nAvailable accounts:")
-        for i, account in enumerate(other_accounts, 1):
-            account_type = "Investor" if isinstance(account, Investor) else "Regular User"
-            print(f"{i}. {account.get_name()} ({account_type})")
-        
-        try:
-            choice = int(input("\nSelect the account to switch to (number, 0 to cancel): "))
+            print("\n" + "="*50)
+            print("🔄 TRANSFER")
+            print("="*50)
+            
+            if not self.logged_account:
+                raise AccountNotFoundException("No account logged in")
+            
+            other_accounts = self.bank_system.get_other_accounts(self.logged_account)
+            
+            if not other_accounts:
+                print("❌ No other accounts available for transfer.")
+                return
+            
+            # contas disponíveis
+            print("\n📋 Available accounts:")
+            for i, account in enumerate(other_accounts, 1):
+                try:
+                    name = account.get_name()
+                    balance = account.get_balance()
+                    print(f"{i}. {name} (Balance: R$ {balance:.2f})")
+                except AttributeError:
+                    print(f"{i}. [Account data unavailable]")
+            
+            # seleção de conta com validação
+            choice = self.validator.get_int_input(
+                "\nSelect account (number, 0 to cancel): ",
+                min_value=0,
+                max_value=len(other_accounts)
+            )
             
             if choice == 0:
-                print("Account switch cancelled.")
-                return False
-            elif 1 <= choice <= len(other_accounts):
-                selected_account = other_accounts[choice - 1]
-                password = input(f"Enter password for {selected_account.get_name()}: ")
-                
-                if password == selected_account.get_password():
-                    self.logged_account = selected_account
-                    print(f"✅ Successfully switched to account: {self.logged_account.get_name()}")
-                    print(f"Account type: {'Investor' if isinstance(self.logged_account, Investor) else 'Regular User'}")
-                    print(f"Balance: R$ {self.logged_account.get_balance():.2f}")
-                    return True
-                else:
-                    print("❌ Incorrect password. Account switch failed.")
-            else:
-                print("❌ Invalid account selection.")
-                
-        except ValueError:
-            print("❌ Invalid input. Please enter a valid number.")
-        
-        input("Press Enter to continue...")
-        return False
+                print("❌ Transfer cancelled.")
+                return
+            
+            try:
+                target_account = other_accounts[choice - 1]
+            except IndexError:
+                # TRATAMENTO: Índice fora do range
+                raise IndexError("Invalid account selection")
+            
+            # validação de valor
+            current_balance = self.logged_account.get_balance()
+            print(f"\n💰 Your balance: R$ {current_balance:.2f}")
+            
+            amount = self.validator.get_float_input(
+                "Enter transfer amount (R$): ",
+                min_value=0.01,
+                max_value=current_balance
+            )
+            
+            # confirmação
+            target_name = target_account.get_name()
+            confirm = self.validator.get_choice(
+                f"\nConfirm transfer of R$ {amount:.2f} to {target_name}? (y/n): ",
+                ['y', 'yes', 'n', 'no', 's', 'sim', 'não']
+            )
+            
+            if confirm not in ['y', 'yes', 's', 'sim']:
+                print("❌ Transfer cancelled.")
+                return
+
+            # execução da transferência
+            from models.users import transaction
+            transaction(self.logged_account, target_account, amount)
+            
+            print(f"\n✅ Transfer completed successfully!")
+            print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
+            
+        except AccountNotFoundException as e:
+            print(f"❌ {e}")
+        except IndexError as e:
+            print(f"❌ {e}")
+        except InsufficientBalanceException as e:
+            print(f"❌ {e}")
+        except ValueError as e:
+            print(f"❌ Transfer error: {e}")
+        except KeyboardInterrupt:
+            print("\n❌ Transfer cancelled.")
+        except Exception as e:
+            print(f"❌ Unexpected error during transfer: {e}")
+        finally:
+            input("\nPress Enter to continue...")
     
-
-
     def pay_bills(self):
         """
-            Processa pagamento de boletos
-            CORRIGIDO: Agora mostra apenas bills do usuário logado
+        Pagamento de boletos com tratamento de exceções
+        
+        Operação crítica que envolve listagem e seleção
         """
-        print("\n========== Pay Bills ==========\n")
-        
-        # CORRIGIDO: Pega apenas bills do usuário logado
-        unpaid_bills = self.bank_system.get_unpaid_bills(user=self.logged_account)
-        
-        if not unpaid_bills:
-            print("✅ You have no unpaid bills!")
-            input("Press Enter to continue...")
-            return
-        
-        print(f"Found {len(unpaid_bills)} unpaid bill(s) for {self.logged_account.get_name()}:")
-        print("-" * 50)
-        
-        # Mostra boletos não pagos
-        for i, bill in enumerate(unpaid_bills, 1):
-            status = "⚠️ OVERDUE" if bill.is_overdue() else "Pending"
-            owner_info = f" (Owner: {bill.get_owner().get_name()})" if bill.get_owner() else " (Public bill)"
-            print(f"{i}. {bill.get_description()}{owner_info}")
-            print(f"   💰 Value: R$ {bill.get_value():.2f}")
-            print(f"   📅 Due Date: {bill.get_due_date().strftime('%Y-%m-%d')}")
-            print(f"   🚨 Status: {status}")
-            print("-" * 30)
-        
-        print(f"\n💳 Your current balance: R$ {self.logged_account.get_balance():.2f}")
-        
         try:
-            choice = int(input("\nSelect the bill to pay (number, 0 to cancel): "))
+            print("\n" + "="*50)
+            print("💳 PAY BILLS")
+            print("="*50)
+            
+            if not self.logged_account:
+                raise AccountNotFoundException("No account logged in")
+            
+            # Busca boletos com tratamento
+            try:
+                unpaid_bills = self.bank_system.get_unpaid_bills(user=self.logged_account)
+            except AttributeError:
+                # TRATAMENTO: Método não existe
+                unpaid_bills = []
+            
+            if not unpaid_bills:
+                print("✅ You have no unpaid bills!")
+                return
+            
+            print(f"Found {len(unpaid_bills)} unpaid bill(s):")
+            print("-" * 50)
+            
+            # Mostra boletos com proteção
+            for i, bill in enumerate(unpaid_bills, 1):
+                try:
+                    status = "⚠️ OVERDUE" if bill.is_overdue() else "Pending"
+                    owner = bill.get_owner()
+                    owner_info = f" (Owner: {owner.get_name()})" if owner else " (Public)"
+                    
+                    print(f"{i}. {bill.get_description()}{owner_info}")
+                    print(f"   💰 Value: R$ {bill.get_value():.2f}")
+                    print(f"   📅 Due Date: {bill.get_due_date().strftime('%Y-%m-%d')}")
+                    print(f"   🚨 Status: {status}")
+                    print("-" * 30)
+                    
+                except AttributeError as e:
+                    # TRATAMENTO: Dados do boleto incompletos
+                    print(f"{i}. [Bill data unavailable: {e}]")
+                    print("-" * 30)
+            
+            print(f"\n💳 Your balance: R$ {self.logged_account.get_balance():.2f}")
+            
+            # seleção com validação
+            choice = self.validator.get_int_input(
+                "\nSelect bill to pay (0 to cancel): ",
+                min_value=0,
+                max_value=len(unpaid_bills)
+            )
             
             if choice == 0:
                 print("❌ Payment cancelled.")
-            elif 1 <= choice <= len(unpaid_bills):
+                return
+            
+            try:
                 selected_bill = unpaid_bills[choice - 1]
-                
-                print(f"\n📋 Bill Details:")
-                print(f"Description: {selected_bill.get_description()}")
-                print(f"Value: R$ {selected_bill.get_value():.2f}")
-                print(f"Due Date: {selected_bill.get_due_date().strftime('%Y-%m-%d')}")
-                
-                if selected_bill.is_overdue():
-                    print("⚠️  WARNING: This bill is overdue!")
-                
-                confirm = input("\nConfirm payment? (y/n): ").lower().strip()
-                
-                if confirm in ['y', 'yes', 's', 'sim']:
-                    try:
-                        selected_bill.pay(self.logged_account)
-                        print(f"✅ Bill paid successfully!")
-                        print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
-                    except ValueError as e:
-                        print(f"❌ Error: {e}")
-                else:
-                    print("❌ Payment cancelled.")
-            else:
-                print("❌ Invalid bill selection.")
-                
-        except ValueError:
-            print("❌ Invalid input. Please enter a valid number.")
-        
-        input("\nPress Enter to continue...")
-    
-    def exchange_real_to_dollar(self):
-        """Troca Real para Dólar"""
-        print("\n💱 Exchange Real to Dollar")
-        try:
-            amount = float(input("Enter amount in R$: "))
-            exchange_rate = self.bank_system.get_exchange_rate()
-            dollars = amount / exchange_rate
+            except IndexError:
+                raise IndexError("Invalid bill selection")
             
-            if amount > self.logged_account.get_balance():
-                print("❌ Insufficient funds for this exchange.")
-            else:
-                self.logged_account.set_balance(self.logged_account.get_balance() - amount)
-                self.logged_account.set_dolar_balance(self.logged_account.get_dolar_balance() + dollars)
-                print(f"✅ Successfully exchanged R$ {amount:.2f} to $ {dollars:.2f}")
-                print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}, $ {self.logged_account.get_dolar_balance():.2f}")
-        except ValueError:
-            print("❌ Invalid amount entered.")
-    
-    def exchange_dollar_to_real(self):
-        """Troca Dólar para Real"""
-        print("\n💱 Exchange Dollar to Real")
-        try:
-            amount = float(input("Enter amount in $: "))
-            exchange_rate = self.bank_system.get_exchange_rate()
-            reais = amount * exchange_rate
+            # Mostra detalhes
+            print(f"\n📋 Bill Details:")
+            print(f"Description: {selected_bill.get_description()}")
+            print(f"Value: R$ {selected_bill.get_value():.2f}")
             
-            if amount > self.logged_account.get_dolar_balance():
-                print("❌ Insufficient funds for this exchange.")
-            else:
-                self.logged_account.set_dolar_balance(self.logged_account.get_dolar_balance() - amount)
-                self.logged_account.set_balance(self.logged_account.get_balance() + reais)
-                print(f"✅ Successfully exchanged $ {amount:.2f} to R$ {reais:.2f}")
-                print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}, $ {self.logged_account.get_dolar_balance():.2f}")
-        except ValueError:
-            print("❌ Invalid amount entered.")
-
-    def process_loan_with_strategy(self):
-        print("\n💰 Make a Loan")
-        print(f"Current balance: R$ {self.logged_account.get_balance():.2f}")
-
-        strategy = LoanStrategyProvider.get_strategy(self.logged_account, "auto")
-        max_loan = strategy.calculate_max_loan(self.logged_account)
-
-        print(f"Maximum loan amount: R$ {max_loan:.2f}")
-
-        # Escolher estratégia (opcional)
-        print("\n Loan Policy Options:")
-        print("1. Auto (Recommended based on your profile)")
-        print("2. Standard Policy")
-        print("3. Conservative Policy (lower risk)")
-
-        policy_choice = input("Select loan policy (1-3, default 1): ").strip()
-
-        strategy_map = {
-            "1": "auto",
-            "2": "standard",
-            "3": "conservative",
-            "": "auto"
-        }
-
-        strategy_type = strategy_map.get(policy_choice, "auto")
-        strategy = LoanStrategyProvider.get_strategy(self.logged_account, strategy_type)
-
-
-        try:
-            amount = float(input("\nEnter loan amount: R$ "))
-            duration = int(input("Enter loan duration in months: "))
-
-            # usa o processador com a estratégia selecionada
-            processor = LoanProcessor(self.logged_account, strategy)
-
-            if processor.process_loan_request(amount, duration):
-                confirm = input("\nConfirm loan? (y/n): ").lower().strip()
-
-                if confirm in ['y', 'yes', 's', 'sim']:
-                    interest_rate = strategy.calculate_interest_rate(amount, duration, self.logged_account)
-                    total_amount = amount * (1 + interest_rate / 100)
-
-                # cria o empréstimo
-                
-                Loan(amount, duration, self.logged_account)
-                
-                # cria boleto para pagamento total
-                due_date = datetime.now() + timedelta(days=duration * 30)
-                payment_bill = Bill(
-                    total_amount, 
-                    f"Loan Payment - {duration} months ({interest_rate:.2f}% interest)", 
-                    due_date.strftime("%Y-%m-%d")
-                )
-                self.bank_system.add_bill(payment_bill)
-                
-                # add saldo
-                self.logged_account.set_balance(
-                    self.logged_account.get_balance() + amount
-                )
-                
-                print(f"\n✅ Loan approved and processed!")
+            if selected_bill.is_overdue():
+                print("⚠️ WARNING: This bill is overdue!")
+            
+            # confirmação
+            confirm = self.validator.get_choice(
+                "\nConfirm payment? (y/n): ",
+                ['y', 'yes', 'n', 'no', 's', 'sim']
+            )
+            
+            if confirm not in ['y', 'yes', 's', 'sim']:
+                print("❌ Payment cancelled.")
+                return
+            
+            # pagamento
+            try:
+                selected_bill.pay(self.logged_account)
+                print(f"✅ Bill paid successfully!")
                 print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
-            else:
-                print("❌ Loan cancelled.")
-        
-        except ValueError:
-            print(f"❌ Error:")
-    
-    input("\nPress Enter to continue...")
-
-    def order_checkbook(self):
-        """Processa pedido de talão"""
-        self.logged_account.new_checkbook()
+                
+            except ValueError as e:
+                # TRATAMENTO: Saldo insuficiente ou boleto já pago
+                print(f"❌ Payment failed: {e}")
+                
+        except AccountNotFoundException as e:
+            print(f"❌ {e}")
+        except IndexError as e:
+            print(f"❌ {e}")
+        except KeyboardInterrupt:
+            print("\n❌ Payment cancelled.")
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
+        finally:
+            input("\nPress Enter to continue...")
     
     def create_investment_goal(self):
-        """Cria meta de investimento"""
-        if not isinstance(self.logged_account, Investor):
-            print("❌ Only Investor accounts can create investment goals.")
-            input("Press Enter to continue...")
-            return
+        """
+        Criação de meta com validação para investidores
         
-        print("\n🎯 Create Investment Goal")
-        print(f"💰 Current balance: R$ {self.logged_account.get_balance():.2f}")
-        
+        Recurso exclusivo - requer verificação de tipo de conta
+        """
         try:
-            description = input("Enter your investment goal description: ")
-            
-            if not description.strip():
-                print("❌ Description cannot be empty.")
-                input("Press Enter to continue...")
-                return
-            
-            value_needed = float(input("Enter the target amount for your goal (R$): "))
-            
-            if value_needed <= 0:
-                print("❌ Target amount must be positive.")
-                input("Press Enter to continue...")
-                return
-            
-            print(f"\n📋 Investment Goal Summary:")
-            print(f"Description: {description}")
-            print(f"Target Amount: R$ {value_needed:.2f}")
-            
-            confirm = input("\nConfirm investment goal creation? (y/n): ").lower().strip()
-            
-            if confirm in ['y', 'yes', 's', 'sim']:
-                Goal(value_needed, description, self.logged_account)
-                print(f"✅ Investment goal created successfully!")
-                print(f"🎯 Goal: {description}")
-                print(f"💰 Target: R$ {value_needed:.2f}")
-                print(f"📊 You now have {len(self.logged_account.get_investment_goals())} active investment goal(s)")
-            else:
-                print("❌ Investment goal creation cancelled.")
-                
-        except ValueError:
-            print("❌ Invalid input. Please enter valid numbers.")
-        
-        input("Press Enter to continue...")
-    
-    def deposit_in_goal(self):
-        """Deposita em meta de investimento"""
-        print("\n💰 Deposit in Investment Goal")
-        
-        if not isinstance(self.logged_account, Investor):
-            print("❌ Only Investor accounts can deposit into investment goals.")
-            input("Press Enter to continue...")
-            return
-
-
-        goals = self.logged_account.get_investment_goals()
-        
-        if not goals:
-            print("❌ No investment goals found. Create a goal first (option 12).")
-            input("Press Enter to continue...")
-            return
-        
-        print(f"💳 Current balance: R$ {self.logged_account.get_balance():.2f}")
-        print("\n📋 Your Investment Goals:")
-        print("-" * 50)
-        
-        # metas disponiveis
-        for i, goal in enumerate(goals, 1):
-            print(f"{i}. {goal.get_description()}")
-            print(f"   🎯 Target: R$ {goal.get_value_needed():.2f}")
-            print("-" * 30)
-        
-        try:
-            choice = int(input("\nSelect goal to deposit into (number, 0 to cancel): "))
-            
-            if choice == 0:
-                print("❌ Operation cancelled.")
-            elif 1 <= choice <= len(goals):
-                selected_goal = goals[choice - 1]
-                
-                print(f"\n📋 Selected Goal: {selected_goal.get_description()}")
-                print(f"🎯 Target Amount: R$ {selected_goal.get_value_needed():.2f}")
-                print(f"💰 Your balance: R$ {self.logged_account.get_balance():.2f}")
-                
-                deposit_amount = float(input("\nEnter amount to deposit in goal (R$): "))
-                
-                if deposit_amount <= 0:
-                    print("❌ Deposit amount must be positive.")
-                elif deposit_amount > self.logged_account.get_balance():
-                    print("❌ Insufficient balance for this deposit.")
-                else:
-                    confirm = input(f"\nConfirm deposit of R$ {deposit_amount:.2f} into '{selected_goal.get_description()}'? (y/n): ").lower().strip()
-                    
-                    if confirm in ['y', 'yes', 's', 'sim']:
-                        selected_goal.add_value(self.logged_account, deposit_amount)
-                        print(f"✅ Successfully deposited R$ {deposit_amount:.2f} into your investment goal!")
-                        print(f"💰 New balance: R$ {self.logged_account.get_balance():.2f}")
-                        
-                        if selected_goal.get_value_needed() <= 0:
-                            print("🎉 Congratulations! You've reached your investment goal!")
-                    else:
-                        print("❌ Deposit cancelled.")
-            else:
-                print("❌ Invalid goal selection.")
-                
-        except ValueError:
-            print("❌ Invalid input. Please enter valid numbers.")
-        
-        input("Press Enter to continue...")
-
-    def upgrade_account(self):
-        """Aplica decorators à conta do usuário para adicionar funcionalidades"""
-        print("\n" + "="*50)
-        print("✨ ACCOUNT UPGRADE CENTER")
-        print("="*50)
-        print(f"Current account: {self.logged_account.get_name()}")
-        print(f"Balance: R$ {self.logged_account.get_balance():.2f}")
-        
-        print("\n📋 Available Upgrades:")
-        print("1. 💎 Premium Account (Cashback on transactions)")
-        print("2. 🛡️  Insurance Protection (Large transaction protection)")
-        print("3. 📱 Advanced Notifications (SMS + Email)")
-        print("4. 🎓 Student Account (Fee exemptions)")
-        print("5. 👑 VIP Account (Personal manager + discounts)")
-        print("6. 🎁 Premium Bundle (Premium + Insurance + Notifications)")
-        print("0. ↩️  Back to menu")
-        
-        choice = input("\nSelect upgrade (0-6): ").strip()
-        
-        from core.decorators import (
-            PremiumAccountDecorator,
-            InsuranceDecorator,
-            NotificationDecorator,
-            StudentAccountDecorator,
-            VIPDecorator,
-            decorate_user
-        )
-        
-        if choice == '1':
-            self.logged_account = PremiumAccountDecorator(self.logged_account)
-            print("\n✅ Premium Account activated!")
-            
-        elif choice == '2':
-            self.logged_account = InsuranceDecorator(self.logged_account)
-            print("\n✅ Insurance Protection activated!")
-            
-        elif choice == '3':
-            email = input("Enter your email: ")
-            phone = input("Enter your phone: ")
-            self.logged_account = NotificationDecorator(
-                self.logged_account, 
-                phone=phone, 
-                email=email
-            )
-            print("\n✅ Advanced Notifications activated!")
-            
-        elif choice == '4':
-            student_id = input("Enter your student ID: ")
-            self.logged_account = StudentAccountDecorator(
-                self.logged_account, 
-                student_id=student_id
-            )
-            print("\n✅ Student Account activated!")
-            
-        elif choice == '5':
-            print("\n👑 VIP Account Activation")
-            managers = ["Alice Johnson", "Bob Smith", "Carol Williams"]
-            print("Available personal managers:")
-            for i, mgr in enumerate(managers, 1):
-                print(f"{i}. {mgr}")
-            mgr_choice = int(input("Select your manager (1-3): "))
-            manager = managers[mgr_choice - 1] if 1 <= mgr_choice <= 3 else managers[0]
-            
-            self.logged_account = VIPDecorator(self.logged_account, manager_name=manager)
-            print("\n✅ VIP Account activated!")
-            
-        elif choice == '6':
-            print("\n🎁 Activating Premium Bundle...")
-            email = input("Enter your email: ")
-            phone = input("Enter your phone: ")
-            
-            self.logged_account = decorate_user(self.logged_account, [
-                ('premium', {}),
-                ('insurance', {}),
-                ('notification', {'email': email, 'phone': phone})
-            ])
-            print("\n✅ Premium Bundle activated!")
-            print("   ✨ Premium Cashback")
-            print("   🛡️  Transaction Insurance")
-            print("   📱 Advanced Notifications")
-            
-        elif choice == '0':
-            return
-        else:
-            print("❌ Invalid option")
-        
-        input("\nPress Enter to continue...")
-
-
-
-    def quick_operations_menu(self):
-        """Menu de operações rápidas usando Facade Pattern"""
-        from core.facades import BankingFacade, InvestmentFacade, ReportFacade
-        
-        banking_facade = BankingFacade(self.logged_account)
-        report_facade = ReportFacade(self.logged_account)
-        
-        while True:
             print("\n" + "="*50)
-            print("⚡ QUICK OPERATIONS (Facade Pattern)")
+            print("🎯 CREATE INVESTMENT GOAL")
             print("="*50)
-            print("1. 💸 Quick Transfer with Exchange")
-            print("2. 💳 Pay All Bills at Once")
-            print("3. 💰 Create Savings Plan")
-            print("4. 🚨 Emergency Loan")
-            print("5. 📊 Account Summary")
-            print("6. 📈 Financial Report")
-            print("7. 📊 Comparison Report")
             
-            if isinstance(self.logged_account, Investor):
-                print("8. 🎯 Create Diversified Portfolio")
-                print("9. 💰 Auto-Invest Monthly")
-                print("10. 📊 Portfolio Summary")
+            if not self.logged_account:
+                raise AccountNotFoundException("No account logged in")
             
-            print("0. ↩️  Back to main menu")
+            # Verifica tipo de conta
+            if not isinstance(self.logged_account, Investor):
+                raise InvestorOnlyFeatureException(
+                    "Only Investor accounts can create investment goals. "
+                    "Please upgrade your account."
+                )
             
-            choice = input("\nSelect operation: ").strip()
+            print(f"💰 Current balance: R$ {self.logged_account.get_balance():.2f}")
             
-            if choice == '1':
-                # Quick Transfer with Exchange
-                other_accounts = self.bank_system.get_other_accounts(self.logged_account)
-                if not other_accounts:
-                    print("❌ No other accounts available")
-                    continue
-                
-                print("\n📋 Available accounts:")
-                for i, acc in enumerate(other_accounts, 1):
-                    print(f"{i}. {acc.get_name()}")
-                
-                try:
-                    acc_choice = int(input("Select account: "))
-                    target = other_accounts[acc_choice - 1]
-                    amount = float(input("Amount: "))
-                    currency = input("Currency (BRL/USD): ").upper()
-                    
-                    banking_facade.quick_transfer_with_exchange(target, amount, currency)
-                except Exception as e:
-                    print(f"❌ Error: {e}")
+            # validação de descrição
+            description = input("\nEnter goal description: ").strip()
             
-            elif choice == '2':
-                # Pay All Bills
-                banking_facade.pay_all_bills()
+            if not description:
+                raise InvalidAmountException("Description cannot be empty")
             
-            elif choice == '3':
-                # Create Savings Plan
-                try:
-                    monthly = float(input("Monthly amount: R$ "))
-                    goal = input("Goal description: ")
-                    months = int(input("Duration (months): "))
-                    
-                    banking_facade.create_savings_plan(monthly, goal, months)
-                except Exception as e:
-                    print(f"❌ Error: {e}")
+            if len(description) > 100:
+                raise InvalidAmountException("Description too long (max 100 characters)")
             
-            elif choice == '4':
-                # Emergency Loan
-                reason = input("Reason for emergency loan: ")
-                banking_facade.emergency_loan(reason)
+            # validação de valor
+            value_needed = self.validator.get_float_input(
+                "Enter target amount (R$): ",
+                min_value=1.00,
+                max_value=10000000
+            )
             
-            elif choice == '5':
-                # Account Summary
-                banking_facade.print_account_summary()
+            # summary
+            print(f"\n📋 Goal Summary:")
+            print(f"Description: {description}")
+            print(f"Target: R$ {value_needed:.2f}")
             
-            elif choice == '6':
-                # Financial Report
-                days = int(input("Period in days (default 30): ") or "30")
-                report_facade.print_financial_report(days)
+            # confirmação
+            confirm = self.validator.get_choice(
+                "\nConfirm goal creation? (y/n): ",
+                ['y', 'yes', 'n', 'no', 's', 'sim']
+            )
             
-            elif choice == '7':
-                # Comparison Report
-                report_facade.print_comparison_report()
+            if confirm not in ['y', 'yes', 's', 'sim']:
+                print("❌ Goal creation cancelled.")
+                return
             
-            elif choice == '8' and isinstance(self.logged_account, Investor):
-                # Diversified Portfolio
-                investment_facade = InvestmentFacade(self.logged_account)
-                try:
-                    total = float(input("Total investment amount: R$ "))
-                    num_goals = int(input("Number of goals: "))
-                    
-                    goals = []
-                    for i in range(num_goals):
-                        print(f"\nGoal {i+1}:")
-                        desc = input("  Description: ")
-                        pct = float(input("  Percentage: "))
-                        goals.append({'description': desc, 'percentage': pct})
-                    
-                    investment_facade.create_diversified_portfolio(total, goals)
-                except Exception as e:
-                    print(f"❌ Error: {e}")
+            # criar meta
+            Goal(value_needed, description, self.logged_account)
             
-            elif choice == '9' and isinstance(self.logged_account, Investor):
-                # Auto-Invest
-                investment_facade = InvestmentFacade(self.logged_account)
-                try:
-                    monthly = float(input("Monthly investment: R$ "))
-                    investment_facade.auto_invest_monthly(monthly)
-                except Exception as e:
-                    print(f"❌ Error: {e}")
+            goals_count = len(self.logged_account.get_investment_goals())
+            print(f"\n✅ Investment goal created!")
+            print(f"🎯 You now have {goals_count} active goal(s)")
             
-            elif choice == '10' and isinstance(self.logged_account, Investor):
-                # Portfolio Summary
-                investment_facade = InvestmentFacade(self.logged_account)
-                investment_facade.print_portfolio_summary()
-            
-            elif choice == '0':
-                break
-            else:
-                print("❌ Invalid option")
-            
+        except AccountNotFoundException as e:
+            print(f"❌ {e}")
+        except InvestorOnlyFeatureException as e:
+            print(f"❌ {e}")
+        except InvalidAmountException as e:
+            print(f"❌ {e}")
+        except ValueError as e:
+            print(f"❌ Error creating goal: {e}")
+        except KeyboardInterrupt:
+            print("\n❌ Goal creation cancelled.")
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
+        finally:
             input("\nPress Enter to continue...")
-
-
-    """
-SUBSTITUIR O MÉTODO payment_methods_menu() em menu_manager.py por este:
-"""
-
-    def payment_methods_menu(self):
-        """Menu de métodos de pagamento usando Adapter Pattern - CORRIGIDO"""
-        from core.adapters import (
-            PaymentManager,
-            PixAdapter, PixAPI,
-            CreditCardAdapter, CreditCardGateway,
-            CryptoAdapter, CryptoExchangeAPI,
-            InternationalBankAdapter, InternationalBankingAPI
-        )
-        
-        # Cria o gerenciador de pagamentos
-        payment_manager = PaymentManager(self.logged_account)
-
-        # Inicializa APIs externas (simuladas)
-        pix_api = PixAPI()
-        card_gateway = CreditCardGateway()
-        crypto_api = CryptoExchangeAPI()
-        swift_api = InternationalBankingAPI()
-
-        while True:
-                print("\n" + "="*50)
-                print("💳 PAYMENT METHODS (Adapter Pattern)")
-                print("="*50)
-                print("1. ➕ Add PIX Payment Method")
-                print("2. ➕ Add Credit Card")
-                print("3. ➕ Add Cryptocurrency")
-                print("4. ➕ Add International Transfer")
-                print("5. 📋 List Payment Methods")
-                print("6. 💳 Pay Bill with Specific Method")
-                print("7. 💰 Make Payment")
-                print("8. 📊 Payment Methods Summary")
-                print("0. ↩️  Back to main menu")
-                
-                choice = input("\nSelect option: ").strip()
-                
-                if choice == '1':
-                    # Add PIX - CORRIGIDO: passa o user
-                    pix_key = input("Enter your PIX key (email/phone): ")
-                    adapter = PixAdapter(pix_api, self.logged_account, pix_key)
-                    payment_manager.add_payment_method("PIX", adapter)
-                    print(f"✅ PIX added with key: {pix_key}")
-                
-                elif choice == '2':
-                    # Add Credit Card - CORRIGIDO: passa o user
-                    print("\n💳 Add Credit Card")
-                    card_num = input("Card number (16 digits): ")
-                    cvv = input("CVV: ")
-                    expiry = input("Expiry (MM/YY): ")
-                    name = input("Cardholder name: ")
-                    
-                    adapter = CreditCardAdapter(
-                        card_gateway, 
-                        self.logged_account,  # CORRIGIDO
-                        card_num, 
-                        cvv, 
-                        expiry, 
-                        name
-                    )
-                    payment_manager.add_payment_method("Credit Card", adapter)
-                    print(f"✅ Credit Card added (ending in {card_num[-4:]})")
-                
-                elif choice == '3':
-                    # Add Crypto - já estava correto
-                    adapter = CryptoAdapter(crypto_api, self.logged_account)
-                    payment_manager.add_payment_method("Cryptocurrency", adapter)
-                    print("✅ Cryptocurrency payment method added")
-                    print("   Supported: BTC, ETH")
-                
-                elif choice == '4':
-                    # Add International Transfer - já estava correto
-                    adapter = InternationalBankAdapter(swift_api, self.logged_account)
-                    payment_manager.add_payment_method("International Transfer", adapter)
-                    print("✅ International transfer method added (SWIFT)")
-                
-                elif choice == '5':
-                    # List Methods
-                    methods = payment_manager.list_payment_methods()
-                    print(f"\n📋 Available payment methods: {len(methods)}")
-                    for i, method in enumerate(methods, 1):
-                        print(f"{i}. {method}")
-                
-                elif choice == '6':
-                    # Pay Bill with Method - CORRIGIDO: pega bills do usuário
-                    unpaid_bills = self.bank_system.get_unpaid_bills(user=self.logged_account)
-                    
-                    if not unpaid_bills:
-                        print("✅ No bills to pay")
-                        continue
-                    
-                    print("\n📋 Your unpaid bills:")
-                    for i, bill in enumerate(unpaid_bills, 1):
-                        owner_info = f" ({bill.get_owner().get_name()})" if bill.get_owner() else " (Public)"
-                        print(f"{i}. {bill.get_description()}{owner_info} - R$ {bill.get_value():.2f}")
-                    
-                    methods = payment_manager.list_payment_methods()
-                    if not methods:
-                        print("❌ No payment methods configured")
-                        print("   Add a payment method first (options 1-4)")
-                        input("Press Enter to continue...")
-                        continue
-                    
-                    print("\n💳 Available methods:")
-                    for i, method in enumerate(methods, 1):
-                        print(f"{i}. {method}")
-                    
-                    try:
-                        bill_idx = int(input("\nSelect bill: ")) - 1
-                        method_idx = int(input("Select payment method: ")) - 1
-                        
-                        if 0 <= bill_idx < len(unpaid_bills) and 0 <= method_idx < len(methods):
-                            selected_bill = unpaid_bills[bill_idx]
-                            selected_method = methods[method_idx]
-                            
-                            payment_manager.pay_bill_with_method(selected_bill, selected_method)
-                        else:
-                            print("❌ Invalid selection")
-                    except Exception as e:
-                        print(f"❌ Error: {e}")
-                
-                elif choice == '7':
-                    # Make Payment
-                    methods = payment_manager.list_payment_methods()
-                    if not methods:
-                        print("❌ No payment methods configured")
-                        continue
-                    
-                    print("\n💳 Available methods:")
-                    for i, method in enumerate(methods, 1):
-                        balance = payment_manager.payment_methods[method].check_balance()
-                        balance_str = f"R$ {balance:.2f}" if balance != float('inf') else "Unlimited"
-                        print(f"{i}. {method} (Balance: {balance_str})")
-                    
-                    try:
-                        method_idx = int(input("\nSelect payment method: ")) - 1
-                        
-                        if 0 <= method_idx < len(methods):
-                            selected_method = methods[method_idx]
-                            
-                            amount = float(input("Amount: R$ "))
-                            description = input("Description: ")
-                            
-                            destination = None
-                            if selected_method == "PIX":
-                                destination = input("Destination PIX key (email/phone): ")
-                                print(f"ℹ️  Tip: Try test@test.com or 123456789")
-                            elif selected_method == "Cryptocurrency":
-                                destination = input("Crypto (BTC/ETH): ").upper()
-                            elif selected_method == "International Transfer":
-                                print("\nAvailable SWIFT codes for testing:")
-                                print("  BOFAUS3N - Bank of America")
-                                print("  CITIUS33 - Citibank")
-                                swift = input("SWIFT code: ").upper()
-                                account = input("Account number: ")
-                                name = input("Beneficiary name: ")
-                                destination = f"{swift}:{account}:{name}"
-                            
-                            result = payment_manager.pay_with(
-                                selected_method, amount, description, destination
-                            )
-                            
-                            if result["success"]:
-                                print(f"\n✅ Payment successful!")
-                                print(f"   Method: {result.get('method')}")
-                                print(f"   Transaction ID: {result.get('transaction_id')}")
-                                if result.get('message'):
-                                    print(f"   Details: {result['message']}")
-                            else:
-                                print(f"\n❌ Payment failed!")
-                                print(f"   Reason: {result.get('message')}")
-                        else:
-                            print("❌ Invalid selection")
-                        
-                    except Exception as e:
-                        print(f"❌ Error: {e}")
-                
-                elif choice == '8':
-                    # Summary
-                    payment_manager.print_payment_summary()
-                
-                elif choice == '0':
-                    break
-                else:
-                    print("❌ Invalid option")
-                
-                input("\nPress Enter to continue...")
-    # ==================== DEMO PADRÕES ====================
-
-    def demonstrate_patterns(self):
-        """Demonstra todos os padrões estruturais em ação"""
-        print("\n" + "="*60)
-        print("🎓 STRUCTURAL PATTERNS DEMONSTRATION")
-        print("="*60)
-        
-        print("\n1️⃣  DECORATOR PATTERN")
-        print("-" * 60)
-        print("Adding features dynamically to accounts...")
-        
-        from core.decorators import PremiumAccountDecorator
-        
-        original_balance = self.logged_account.get_balance()
-        print(f"Original balance: R$ {original_balance:.2f}")
-        
-        # Aplica Premium temporariamente
-        temp_account = PremiumAccountDecorator(self.logged_account)
-        print("✨ Applied Premium Decorator")
-        print("Now withdrawals will generate cashback!")
-        
-        print("\n2️⃣  FACADE PATTERN")
-        print("-" * 60)
-        print("Simplifying complex operations...")
-        
-        from core.facades import BankingFacade
-        facade = BankingFacade(self.logged_account)
-        
-        print("📊 Getting account summary using Facade:")
-        summary = facade.get_account_summary()
-        print(f"   Name: {summary['name']}")
-        print(f"   Type: {summary['account_type']}")
-        print(f"   Balance: R$ {summary['balance_brl']:.2f}")
-        print(f"   Transactions: {summary['transactions']}")
-        
-        print("\n3️⃣  ADAPTER PATTERN")
-        print("-" * 60)
-        print("Integrating external payment systems...")
-        
-        from core.adapters import PaymentManager, PixAPI, PixAdapter
-        
-        payment_manager = PaymentManager(self.logged_account)
-        pix_api = PixAPI()
-        pix_adapter = PixAdapter(pix_api, self.logged_account, "demo@email.com")
-        
-        payment_manager.add_payment_method("PIX Demo", pix_adapter)
-        print("✅ Integrated PIX payment system")
-        print("   Now can pay bills using PIX!")
-        
-        print("\n" + "="*60)
-        print("✅ All structural patterns demonstrated!")
-        print("="*60)
-        
-        input("\nPress Enter to continue...")
